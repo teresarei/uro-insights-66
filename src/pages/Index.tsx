@@ -1,4 +1,6 @@
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { DiaryProvider, useDiary } from '@/context/DiaryContext';
+import { BankIDLogin } from '@/components/auth/BankIDLogin';
 import { Header } from '@/components/urotracker/Header';
 import { Dashboard } from '@/components/urotracker/Dashboard';
 import { EntryForm } from '@/components/urotracker/EntryForm';
@@ -39,11 +41,25 @@ function AppContent() {
   );
 }
 
-const Index = () => {
+function AuthenticatedApp() {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return <BankIDLogin />;
+  }
+
   return (
     <DiaryProvider>
       <AppContent />
     </DiaryProvider>
+  );
+}
+
+const Index = () => {
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
   );
 };
 
