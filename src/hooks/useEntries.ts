@@ -139,6 +139,26 @@ export function useEntries() {
     }
   };
 
+  // Delete all entries
+  const deleteAllEntries = async (): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('diary_entries')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+      if (deleteError) throw deleteError;
+
+      setEntries([]);
+      return true;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete all entries';
+      toast.error(message);
+      console.error('Error deleting all entries:', err);
+      return false;
+    }
+  };
+
   // Get entries for a specific date range (for dashboard)
   const getEntriesInRange = useCallback((startDate: Date, endDate: Date): DiaryEntry[] => {
     const start = startDate.toISOString().split('T')[0];
@@ -282,6 +302,7 @@ export function useEntries() {
     addEntries,
     updateEntry,
     deleteEntry,
+    deleteAllEntries,
     getEntriesInRange,
     getEntriesLast48Hours,
     getEntriesLast24Hours,
