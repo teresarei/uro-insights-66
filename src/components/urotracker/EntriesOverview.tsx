@@ -152,10 +152,10 @@ export function EntriesOverview() {
       date: entry.date,
       time: entry.time.slice(0, 5), // Remove seconds
       volume_ml: entry.volume_ml?.toString() || '',
-      urgency: entry.urgency?.toString() || '',
-      leakage_severity: entry.leakage_severity || '',
+      urgency: entry.urgency?.toString() || 'none',
+      leakage_severity: entry.leakage_severity || 'not_set',
       intake_type: entry.intake_type || '',
-      trigger: entry.trigger || '',
+      trigger: entry.trigger || 'none',
       notes: entry.notes || '',
       dry_pad_weight_g: entry.dry_pad_weight_g?.toString() || '',
       wet_pad_weight_g: entry.wet_pad_weight_g?.toString() || '',
@@ -175,10 +175,10 @@ export function EntriesOverview() {
       date: editForm.date,
       time: editForm.time + ':00',
       volume_ml: editForm.volume_ml ? parseInt(editForm.volume_ml) : null,
-      urgency: editForm.urgency ? parseInt(editForm.urgency) : null,
-      leakage_severity: editForm.leakage_severity as any || null,
+      urgency: editForm.urgency && editForm.urgency !== 'none' ? parseInt(editForm.urgency) : null,
+      leakage_severity: editForm.leakage_severity && editForm.leakage_severity !== 'not_set' ? editForm.leakage_severity as any : null,
       intake_type: editForm.intake_type || null,
-      trigger: editForm.trigger || null,
+      trigger: editForm.trigger && editForm.trigger !== 'none' ? editForm.trigger : null,
       notes: editForm.notes || null,
       dry_pad_weight_g: editForm.dry_pad_weight_g ? parseFloat(editForm.dry_pad_weight_g) : null,
       wet_pad_weight_g: editForm.wet_pad_weight_g ? parseFloat(editForm.wet_pad_weight_g) : null,
@@ -460,7 +460,7 @@ export function EntriesOverview() {
                       <SelectValue placeholder="Select urgency" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="1">1 - No urgency</SelectItem>
                       <SelectItem value="2">2 - Mild</SelectItem>
                       <SelectItem value="3">3 - Moderate</SelectItem>
@@ -517,7 +517,7 @@ export function EntriesOverview() {
                       <SelectValue placeholder="Select amount" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Not set</SelectItem>
+                      <SelectItem value="not_set">Not set</SelectItem>
                       <SelectItem value="small">Small</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="large">Large</SelectItem>
@@ -563,7 +563,7 @@ export function EntriesOverview() {
                       <SelectValue placeholder="Select trigger" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       <SelectItem value="cough">Coughing</SelectItem>
                       <SelectItem value="sneeze">Sneezing</SelectItem>
                       <SelectItem value="laugh">Laughing</SelectItem>
