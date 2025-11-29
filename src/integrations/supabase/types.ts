@@ -19,12 +19,14 @@ export type Database = {
           confidence: string | null
           created_at: string
           date: string
+          dry_pad_weight_g: number | null
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           intake_type: string | null
           leakage_severity:
             | Database["public"]["Enums"]["leakage_severity"]
             | null
+          leakage_weight_g: number | null
           notes: string | null
           source: Database["public"]["Enums"]["entry_source"]
           time: string
@@ -33,17 +35,20 @@ export type Database = {
           urgency: number | null
           user_id: string | null
           volume_ml: number | null
+          wet_pad_weight_g: number | null
         }
         Insert: {
           confidence?: string | null
           created_at?: string
           date?: string
+          dry_pad_weight_g?: number | null
           event_type: Database["public"]["Enums"]["event_type"]
           id?: string
           intake_type?: string | null
           leakage_severity?:
             | Database["public"]["Enums"]["leakage_severity"]
             | null
+          leakage_weight_g?: number | null
           notes?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
           time?: string
@@ -52,17 +57,20 @@ export type Database = {
           urgency?: number | null
           user_id?: string | null
           volume_ml?: number | null
+          wet_pad_weight_g?: number | null
         }
         Update: {
           confidence?: string | null
           created_at?: string
           date?: string
+          dry_pad_weight_g?: number | null
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           intake_type?: string | null
           leakage_severity?:
             | Database["public"]["Enums"]["leakage_severity"]
             | null
+          leakage_weight_g?: number | null
           notes?: string | null
           source?: Database["public"]["Enums"]["entry_source"]
           time?: string
@@ -71,6 +79,7 @@ export type Database = {
           urgency?: number | null
           user_id?: string | null
           volume_ml?: number | null
+          wet_pad_weight_g?: number | null
         }
         Relationships: []
       }

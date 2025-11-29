@@ -78,6 +78,8 @@ export function EntriesOverview() {
     intake_type: '',
     trigger: '',
     notes: '',
+    dry_pad_weight_g: '',
+    wet_pad_weight_g: '',
   });
 
   // Delete confirmation
@@ -155,11 +157,19 @@ export function EntriesOverview() {
       intake_type: entry.intake_type || '',
       trigger: entry.trigger || '',
       notes: entry.notes || '',
+      dry_pad_weight_g: entry.dry_pad_weight_g?.toString() || '',
+      wet_pad_weight_g: entry.wet_pad_weight_g?.toString() || '',
     });
   };
 
   const handleSaveEdit = async () => {
     if (!editingEntry) return;
+
+    // Calculate leakage weight if both pad weights are provided
+    let leakageWeight: number | null = null;
+    if (editForm.dry_pad_weight_g && editForm.wet_pad_weight_g) {
+      leakageWeight = Math.max(0, parseFloat(editForm.wet_pad_weight_g) - parseFloat(editForm.dry_pad_weight_g));
+    }
 
     const updates: Partial<DiaryEntry> = {
       date: editForm.date,
@@ -170,6 +180,9 @@ export function EntriesOverview() {
       intake_type: editForm.intake_type || null,
       trigger: editForm.trigger || null,
       notes: editForm.notes || null,
+      dry_pad_weight_g: editForm.dry_pad_weight_g ? parseFloat(editForm.dry_pad_weight_g) : null,
+      wet_pad_weight_g: editForm.wet_pad_weight_g ? parseFloat(editForm.wet_pad_weight_g) : null,
+      leakage_weight_g: leakageWeight,
     };
 
     const success = await updateEntry(editingEntry.id, updates);
@@ -352,8 +365,15 @@ export function EntriesOverview() {
                         )}
                         {entry.event_type === 'leakage' && (
                           <span className="capitalize">
-                            {entry.leakage_severity}
+                            {entry.leakage_weight_g 
+                              ? `${entry.leakage_weight_g}g` 
+                              : entry.leakage_severity || '—'}
                             {entry.trigger && ` • ${entry.trigger}`}
+                            {entry.dry_pad_weight_g && entry.wet_pad_weight_g && (
+                              <span className="text-muted-foreground text-xs ml-1">
+                                ({entry.dry_pad_weight_g}→{entry.wet_pad_weight_g}g)
+                              </span>
+                            )}
                           </span>
                         )}
                       </TableCell>
@@ -488,7 +508,7 @@ export function EntriesOverview() {
             {editingEntry?.event_type === 'leakage' && (
               <>
                 <div className="space-y-2">
-                  <Label>Amount</Label>
+                  <Label>Amount (optional if using pad weights)</Label>
                   <Select 
                     value={editForm.leakage_severity} 
                     onValueChange={(v) => setEditForm(prev => ({ ...prev, leakage_severity: v }))}
@@ -497,12 +517,42 @@ export function EntriesOverview() {
                       <SelectValue placeholder="Select amount" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">Not set</SelectItem>
                       <SelectItem value="small">Small</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
                       <SelectItem value="large">Large</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Dry pad weight (g)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editForm.dry_pad_weight_g}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, dry_pad_weight_g: e.target.value }))}
+                      placeholder="e.g., 15"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Wet pad weight (g)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={editForm.wet_pad_weight_g}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, wet_pad_weight_g: e.target.value }))}
+                      placeholder="e.g., 45"
+                    />
+                  </div>
+                </div>
+                {editForm.dry_pad_weight_g && editForm.wet_pad_weight_g && (
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-sm font-medium text-primary">
+                      Calculated leakage: {Math.max(0, parseFloat(editForm.wet_pad_weight_g) - parseFloat(editForm.dry_pad_weight_g)).toFixed(1)}g
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Trigger</Label>
                   <Select 

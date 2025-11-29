@@ -20,7 +20,7 @@ interface DiaryContextType {
   // Entry operations
   addVoidEntry: (data: { time: string; volume: number; urgency?: number; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low' }) => Promise<void>;
   addIntakeEntry: (data: { time: string; volume: number; type?: string; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low' }) => Promise<void>;
-  addLeakageEntry: (data: { time: string; amount: 'small' | 'medium' | 'large'; trigger?: string; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low' }) => Promise<void>;
+  addLeakageEntry: (data: { time: string; amount?: 'small' | 'medium' | 'large'; trigger?: string; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low'; dryPadWeight?: number; wetPadWeight?: number }) => Promise<void>;
   addMultipleEntries: (entries: DiaryEntryInsert[]) => Promise<DiaryEntry[]>;
   
   // Stats
@@ -92,23 +92,36 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
 
   const addLeakageEntry = async (data: { 
     time: string; 
-    amount: 'small' | 'medium' | 'large'; 
+    amount?: 'small' | 'medium' | 'large'; 
     trigger?: string; 
     notes?: string;
     date?: string;
     source?: 'manual' | 'scan';
     confidence?: 'high' | 'medium' | 'low';
+    dryPadWeight?: number;
+    wetPadWeight?: number;
   }) => {
     const today = data.date || new Date().toISOString().split('T')[0];
+    
+    // Calculate leakage weight if both pad weights are provided
+    let leakageWeight: number | null = null;
+    if (data.dryPadWeight !== undefined && data.wetPadWeight !== undefined) {
+      leakageWeight = data.wetPadWeight - data.dryPadWeight;
+      if (leakageWeight < 0) leakageWeight = 0;
+    }
+    
     await addEntry({
       date: today,
       time: data.time + ':00',
       event_type: 'leakage',
-      leakage_severity: data.amount,
+      leakage_severity: data.amount || null,
       trigger: data.trigger || null,
       notes: data.notes || null,
       source: data.source || 'manual',
       confidence: data.confidence || null,
+      dry_pad_weight_g: data.dryPadWeight || null,
+      wet_pad_weight_g: data.wetPadWeight || null,
+      leakage_weight_g: leakageWeight,
     });
   };
 

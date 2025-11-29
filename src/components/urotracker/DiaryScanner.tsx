@@ -21,6 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { DiaryEntryInsert } from '@/types/database';
 
 interface ParsedEntry {
+  date?: string;
   time: string;
   volume?: number;
   urgency?: number | null;
@@ -30,6 +31,8 @@ interface ParsedEntry {
   notes?: string | null;
   confidence: 'high' | 'medium' | 'low';
   selected?: boolean;
+  dry_pad_weight_g?: number | null;
+  wet_pad_weight_g?: number | null;
 }
 
 interface ParsedData {
@@ -139,8 +142,9 @@ export function DiaryScanner() {
     // Collect void entries
     selectedVoids.forEach(index => {
       const entry = parsedData.voids[index];
+      const entryDate = entry.date || today;
       entriesToImport.push({
-        date: today,
+        date: entryDate,
         time: entry.time + ':00',
         event_type: 'void',
         volume_ml: entry.volume || null,
@@ -154,8 +158,9 @@ export function DiaryScanner() {
     // Collect intake entries
     selectedIntakes.forEach(index => {
       const entry = parsedData.intakes[index];
+      const entryDate = entry.date || today;
       entriesToImport.push({
-        date: today,
+        date: entryDate,
         time: entry.time + ':00',
         event_type: 'intake',
         volume_ml: entry.volume || null,
@@ -169,15 +174,26 @@ export function DiaryScanner() {
     // Collect leakage entries
     selectedLeakages.forEach(index => {
       const entry = parsedData.leakages[index];
+      const entryDate = entry.date || today;
+      
+      // Calculate leakage weight if pad weights are present
+      let leakageWeight: number | null = null;
+      if (entry.dry_pad_weight_g && entry.wet_pad_weight_g) {
+        leakageWeight = Math.max(0, entry.wet_pad_weight_g - entry.dry_pad_weight_g);
+      }
+      
       entriesToImport.push({
-        date: today,
+        date: entryDate,
         time: entry.time + ':00',
         event_type: 'leakage',
-        leakage_severity: entry.amount || 'small',
+        leakage_severity: entry.amount || null,
         trigger: entry.trigger || null,
         notes: entry.notes || null,
         source: 'scan',
         confidence: entry.confidence,
+        dry_pad_weight_g: entry.dry_pad_weight_g || null,
+        wet_pad_weight_g: entry.wet_pad_weight_g || null,
+        leakage_weight_g: leakageWeight,
       });
     });
 
@@ -326,10 +342,19 @@ export function DiaryScanner() {
                       setSelectedLeakages(newSet);
                     }}
                   />
-                  <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+                  <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
                     <span className="font-medium">{entry.time}</span>
-                    <span className="capitalize">{entry.amount}</span>
-                    <span>{entry.trigger || ''}</span>
+                    <span className="capitalize">{entry.amount || '—'}</span>
+                    <span>
+                      {entry.dry_pad_weight_g && entry.wet_pad_weight_g
+                        ? `${Math.max(0, entry.wet_pad_weight_g - entry.dry_pad_weight_g).toFixed(0)}g`
+                        : entry.trigger || ''}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {entry.dry_pad_weight_g && entry.wet_pad_weight_g
+                        ? `(${entry.dry_pad_weight_g}→${entry.wet_pad_weight_g}g)`
+                        : ''}
+                    </span>
                   </div>
                   {getConfidenceBadge(entry.confidence)}
                 </div>
