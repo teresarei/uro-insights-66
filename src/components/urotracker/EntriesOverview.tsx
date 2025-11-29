@@ -58,7 +58,7 @@ import {
 import { cn } from '@/lib/utils';
 
 export function EntriesOverview() {
-  const { entries, loading, updateEntry, deleteEntry } = useEntries();
+  const { entries, loading, updateEntry, deleteEntry, deleteAllEntries } = useEntries();
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +84,8 @@ export function EntriesOverview() {
 
   // Delete confirmation
   const [deletingEntry, setDeletingEntry] = useState<DiaryEntry | null>(null);
+  const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Filter and sort entries
   const filteredEntries = useMemo(() => {
@@ -202,6 +204,16 @@ export function EntriesOverview() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    setIsDeletingAll(true);
+    const success = await deleteAllEntries();
+    setIsDeletingAll(false);
+    if (success) {
+      toast.success('All diary entries have been deleted.');
+      setShowDeleteAllDialog(false);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     try {
       return format(parseISO(dateStr), 'MMM d, yyyy');
@@ -231,11 +243,23 @@ export function EntriesOverview() {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">Entries Overview</h1>
-        <p className="text-muted-foreground">
-          View, edit, and manage all your diary entries in one place.
-        </p>
+      <div className="flex items-start justify-between">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold text-foreground">Entries Overview</h1>
+          <p className="text-muted-foreground">
+            View, edit, and manage all your diary entries in one place.
+          </p>
+        </div>
+        {entries.length > 0 && (
+          <Button 
+            variant="destructive" 
+            onClick={() => setShowDeleteAllDialog(true)}
+            className="shrink-0"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete All Entries
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -609,6 +633,35 @@ export function EntriesOverview() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation */}
+      <AlertDialog open={showDeleteAllDialog} onOpenChange={setShowDeleteAllDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete All Entries?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete all your diary entries, including data from OCR scans and manual input. This action cannot be undone. Are you sure you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteAll} 
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={isDeletingAll}
+            >
+              {isDeletingAll ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                'Delete All'
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
