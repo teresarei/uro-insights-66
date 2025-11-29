@@ -194,6 +194,11 @@ export function useEntries() {
     const uniqueDates = new Set(data.map(e => e.date));
     const dayCount = uniqueDates.size || 1;
 
+    // Calculate total leakage weight from pad weights
+    const totalLeakageWeight = leakages.reduce((sum, l) => {
+      return sum + (l.leakage_weight_g || 0);
+    }, 0);
+
     return {
       totalVoids: voids.length,
       totalLeakages: leakages.length,
@@ -205,6 +210,7 @@ export function useEntries() {
       avgLeakagesPerDay: Math.round(leakages.length / dayCount * 10) / 10,
       dayVoids,
       nightVoids,
+      totalLeakageWeight,
     };
   }, [getEntriesLast48Hours]);
 

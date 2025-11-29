@@ -57,6 +57,8 @@ export function EntryForm() {
   const [leakageAmount, setLeakageAmount] = useState<string>('');
   const [leakageTrigger, setLeakageTrigger] = useState('');
   const [leakageNotes, setLeakageNotes] = useState('');
+  const [dryPadWeight, setDryPadWeight] = useState('');
+  const [wetPadWeight, setWetPadWeight] = useState('');
 
   const handleVoidSubmit = async () => {
     if (!voidVolume) {
@@ -137,10 +139,11 @@ export function EntryForm() {
   };
 
   const handleLeakageSubmit = async () => {
-    if (!leakageAmount) {
+    // Either pad weights or amount should be provided
+    if (!leakageAmount && !dryPadWeight && !wetPadWeight) {
       toast({
         title: "Missing information",
-        description: "Please select the leakage amount.",
+        description: "Please enter pad weights or select a leakage amount.",
         variant: "destructive",
       });
       return;
@@ -150,9 +153,11 @@ export function EntryForm() {
     try {
       await addLeakageEntry({
         time: leakageTime,
-        amount: leakageAmount as 'small' | 'medium' | 'large',
+        amount: leakageAmount ? (leakageAmount as 'small' | 'medium' | 'large') : undefined,
         trigger: leakageTrigger || undefined,
         notes: leakageNotes || undefined,
+        dryPadWeight: dryPadWeight ? parseFloat(dryPadWeight) : undefined,
+        wetPadWeight: wetPadWeight ? parseFloat(wetPadWeight) : undefined,
       });
 
       toast({
@@ -164,6 +169,8 @@ export function EntryForm() {
       setLeakageAmount('');
       setLeakageTrigger('');
       setLeakageNotes('');
+      setDryPadWeight('');
+      setWetPadWeight('');
     } catch (err) {
       toast({
         title: "Error",
@@ -460,7 +467,7 @@ export function EntryForm() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="leakage-amount">Amount</Label>
+                  <Label htmlFor="leakage-amount">Amount (optional if using pad weights)</Label>
                   <Select value={leakageAmount} onValueChange={setLeakageAmount}>
                     <SelectTrigger className="h-11">
                       <SelectValue placeholder="How much?" />
@@ -472,6 +479,50 @@ export function EntryForm() {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Pad weight tracking */}
+              <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-4">
+                <div className="flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-muted-foreground" />
+                  <Label className="font-medium">Pad Weight Measurement (optional)</Label>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  For accurate tracking, weigh your pad before and after use. The leakage amount will be calculated automatically.
+                </p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="dry-pad-weight">Dry pad weight (g)</Label>
+                    <Input
+                      id="dry-pad-weight"
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 15"
+                      value={dryPadWeight}
+                      onChange={(e) => setDryPadWeight(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="wet-pad-weight">Wet pad weight (g)</Label>
+                    <Input
+                      id="wet-pad-weight"
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g., 45"
+                      value={wetPadWeight}
+                      onChange={(e) => setWetPadWeight(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                </div>
+                {dryPadWeight && wetPadWeight && (
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-sm font-medium text-primary">
+                      Calculated leakage: {Math.max(0, parseFloat(wetPadWeight) - parseFloat(dryPadWeight)).toFixed(1)}g
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">

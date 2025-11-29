@@ -18,6 +18,9 @@ export interface DiaryEntry {
   notes: string | null;
   source: EntrySource;
   confidence: Confidence | null;
+  dry_pad_weight_g: number | null;
+  wet_pad_weight_g: number | null;
+  leakage_weight_g: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +38,9 @@ export interface DiaryEntryInsert {
   notes?: string | null;
   source?: EntrySource;
   confidence?: Confidence | null;
+  dry_pad_weight_g?: number | null;
+  wet_pad_weight_g?: number | null;
+  leakage_weight_g?: number | null;
 }
 
 export interface DiaryEntryUpdate {
@@ -49,6 +55,9 @@ export interface DiaryEntryUpdate {
   notes?: string | null;
   source?: EntrySource;
   confidence?: Confidence | null;
+  dry_pad_weight_g?: number | null;
+  wet_pad_weight_g?: number | null;
+  leakage_weight_g?: number | null;
 }
 
 // Stats computed from entries
@@ -63,6 +72,7 @@ export interface ComputedStats {
   avgLeakagesPerDay: number;
   dayVoids: number;
   nightVoids: number;
+  totalLeakageWeight: number; // Total leakage weight in grams
 }
 
 // Filter options for entries overview
