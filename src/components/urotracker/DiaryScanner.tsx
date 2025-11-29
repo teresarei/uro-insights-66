@@ -18,6 +18,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { DiaryEntryInsert } from '@/types/database';
 
 interface ParsedEntry {
   time: string;
@@ -41,9 +42,10 @@ interface ParsedData {
 }
 
 export function DiaryScanner() {
-  const { addVoidEvent, addFluidIntake, addLeakageEvent, setCurrentView } = useDiary();
+  const { addMultipleEntries, setCurrentView } = useDiary();
   const [images, setImages] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
   const [parsedData, setParsedData] = useState<ParsedData | null>(null);
   const [selectedVoids, setSelectedVoids] = useState<Set<number>>(new Set());
   const [selectedIntakes, setSelectedIntakes] = useState<Set<number>>(new Set());
@@ -127,64 +129,75 @@ export function DiaryScanner() {
     }
   };
 
-  const importSelectedEntries = () => {
+  const importSelectedEntries = async () => {
     if (!parsedData) return;
 
-    const today = new Date();
-    let imported = 0;
+    setIsImporting(true);
+    const today = new Date().toISOString().split('T')[0];
+    const entriesToImport: DiaryEntryInsert[] = [];
 
-    // Import voids
+    // Collect void entries
     selectedVoids.forEach(index => {
       const entry = parsedData.voids[index];
-      const [hours, minutes] = entry.time.split(':').map(Number);
-      const timestamp = new Date(today);
-      timestamp.setHours(hours, minutes, 0, 0);
-
-      addVoidEvent({
-        timestamp,
-        volume: entry.volume || 0,
-        urgency: entry.urgency as 1 | 2 | 3 | 4 | 5 | undefined,
-        notes: entry.notes || undefined
+      entriesToImport.push({
+        date: today,
+        time: entry.time + ':00',
+        event_type: 'void',
+        volume_ml: entry.volume || null,
+        urgency: entry.urgency || null,
+        notes: entry.notes || null,
+        source: 'scan',
+        confidence: entry.confidence,
       });
-      imported++;
     });
 
-    // Import intakes
+    // Collect intake entries
     selectedIntakes.forEach(index => {
       const entry = parsedData.intakes[index];
-      const [hours, minutes] = entry.time.split(':').map(Number);
-      const timestamp = new Date(today);
-      timestamp.setHours(hours, minutes, 0, 0);
-
-      addFluidIntake({
-        timestamp,
-        volume: entry.volume || 0,
-        type: entry.type || undefined,
-        notes: entry.notes || undefined
+      entriesToImport.push({
+        date: today,
+        time: entry.time + ':00',
+        event_type: 'intake',
+        volume_ml: entry.volume || null,
+        intake_type: entry.type || null,
+        notes: entry.notes || null,
+        source: 'scan',
+        confidence: entry.confidence,
       });
-      imported++;
     });
 
-    // Import leakages
+    // Collect leakage entries
     selectedLeakages.forEach(index => {
       const entry = parsedData.leakages[index];
-      const [hours, minutes] = entry.time.split(':').map(Number);
-      const timestamp = new Date(today);
-      timestamp.setHours(hours, minutes, 0, 0);
-
-      addLeakageEvent({
-        timestamp,
-        amount: entry.amount || 'small',
-        trigger: entry.trigger || undefined,
-        notes: entry.notes || undefined
+      entriesToImport.push({
+        date: today,
+        time: entry.time + ':00',
+        event_type: 'leakage',
+        leakage_severity: entry.amount || 'small',
+        trigger: entry.trigger || null,
+        notes: entry.notes || null,
+        source: 'scan',
+        confidence: entry.confidence,
       });
-      imported++;
     });
 
-    toast.success(`Imported ${imported} entries to your diary!`);
-    setParsedData(null);
-    setImages([]);
-    setCurrentView('dashboard');
+    try {
+      const addedEntries = await addMultipleEntries(entriesToImport);
+      
+      if (addedEntries.length > 0) {
+        toast.success(`Imported ${addedEntries.length} entries to your diary!`);
+        setParsedData(null);
+        setImages([]);
+        setCurrentView('dashboard');
+      } else {
+        toast.error('Failed to import entries. Please try again.');
+      }
+    } catch (err) {
+      console.error('Error importing entries:', err);
+      toast.error('Failed to import entries. Please try again.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const getConfidenceBadge = (confidence: 'high' | 'medium' | 'low') => {
@@ -333,6 +346,7 @@ export function DiaryScanner() {
               setImages([]);
             }}
             className="flex-1"
+            disabled={isImporting}
           >
             <X className="h-5 w-5" />
             Cancel
@@ -340,10 +354,14 @@ export function DiaryScanner() {
           <Button 
             variant="hero" 
             onClick={importSelectedEntries}
-            disabled={selectedVoids.size + selectedIntakes.size + selectedLeakages.size === 0}
+            disabled={selectedVoids.size + selectedIntakes.size + selectedLeakages.size === 0 || isImporting}
             className="flex-1"
           >
-            <FileCheck className="h-5 w-5" />
+            {isImporting ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <FileCheck className="h-5 w-5" />
+            )}
             Import {selectedVoids.size + selectedIntakes.size + selectedLeakages.size} Entries
           </Button>
         </div>

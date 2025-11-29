@@ -14,7 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      diary_entries: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          date: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          intake_type: string | null
+          leakage_severity:
+            | Database["public"]["Enums"]["leakage_severity"]
+            | null
+          notes: string | null
+          source: Database["public"]["Enums"]["entry_source"]
+          time: string
+          trigger: string | null
+          updated_at: string
+          urgency: number | null
+          user_id: string | null
+          volume_ml: number | null
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          date?: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id?: string
+          intake_type?: string | null
+          leakage_severity?:
+            | Database["public"]["Enums"]["leakage_severity"]
+            | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["entry_source"]
+          time?: string
+          trigger?: string | null
+          updated_at?: string
+          urgency?: number | null
+          user_id?: string | null
+          volume_ml?: number | null
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          date?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          id?: string
+          intake_type?: string | null
+          leakage_severity?:
+            | Database["public"]["Enums"]["leakage_severity"]
+            | null
+          notes?: string | null
+          source?: Database["public"]["Enums"]["entry_source"]
+          time?: string
+          trigger?: string | null
+          updated_at?: string
+          urgency?: number | null
+          user_id?: string | null
+          volume_ml?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +82,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      entry_source: "scan" | "manual"
+      event_type: "void" | "leakage" | "intake"
+      leakage_severity: "small" | "medium" | "large"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +211,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      entry_source: ["scan", "manual"],
+      event_type: ["void", "leakage", "intake"],
+      leakage_severity: ["small", "medium", "large"],
+    },
   },
 } as const

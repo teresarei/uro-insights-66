@@ -21,15 +21,15 @@ import {
   Clock,
   Gauge,
   CheckCircle2,
-  Sparkles
+  Loader2
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type EntryType = 'void' | 'intake' | 'leakage';
 
 export function EntryForm() {
-  const { addVoidEvent, addLeakageEvent, addFluidIntake, setCurrentView } = useDiary();
+  const { addVoidEntry, addIntakeEntry, addLeakageEntry, setCurrentView } = useDiary();
   const [activeTab, setActiveTab] = useState<EntryType>('void');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Void form state
   const [voidTime, setVoidTime] = useState(() => {
@@ -58,14 +58,7 @@ export function EntryForm() {
   const [leakageTrigger, setLeakageTrigger] = useState('');
   const [leakageNotes, setLeakageNotes] = useState('');
 
-  const getTimestamp = (timeString: string): Date => {
-    const [hours, minutes] = timeString.split(':').map(Number);
-    const timestamp = new Date();
-    timestamp.setHours(hours, minutes, 0, 0);
-    return timestamp;
-  };
-
-  const handleVoidSubmit = () => {
+  const handleVoidSubmit = async () => {
     if (!voidVolume) {
       toast({
         title: "Missing information",
@@ -75,25 +68,36 @@ export function EntryForm() {
       return;
     }
 
-    addVoidEvent({
-      timestamp: getTimestamp(voidTime),
-      volume: parseInt(voidVolume),
-      urgency: voidUrgency ? parseInt(voidUrgency) as 1 | 2 | 3 | 4 | 5 : undefined,
-      notes: voidNotes || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await addVoidEntry({
+        time: voidTime,
+        volume: parseInt(voidVolume),
+        urgency: voidUrgency ? parseInt(voidUrgency) : undefined,
+        notes: voidNotes || undefined,
+      });
 
-    toast({
-      title: "Entry logged! 🎉",
-      description: "Your bathroom visit has been recorded.",
-    });
+      toast({
+        title: "Entry logged!",
+        description: "Your bathroom visit has been recorded.",
+      });
 
-    // Reset form
-    setVoidVolume('');
-    setVoidUrgency('');
-    setVoidNotes('');
+      // Reset form
+      setVoidVolume('');
+      setVoidUrgency('');
+      setVoidNotes('');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save entry. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleIntakeSubmit = () => {
+  const handleIntakeSubmit = async () => {
     if (!intakeVolume) {
       toast({
         title: "Missing information",
@@ -103,25 +107,36 @@ export function EntryForm() {
       return;
     }
 
-    addFluidIntake({
-      timestamp: getTimestamp(intakeTime),
-      volume: parseInt(intakeVolume),
-      type: intakeType,
-      notes: intakeNotes || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await addIntakeEntry({
+        time: intakeTime,
+        volume: parseInt(intakeVolume),
+        type: intakeType,
+        notes: intakeNotes || undefined,
+      });
 
-    toast({
-      title: "Intake logged! 💧",
-      description: "Your fluid intake has been recorded.",
-    });
+      toast({
+        title: "Intake logged!",
+        description: "Your fluid intake has been recorded.",
+      });
 
-    // Reset form
-    setIntakeVolume('');
-    setIntakeType('water');
-    setIntakeNotes('');
+      // Reset form
+      setIntakeVolume('');
+      setIntakeType('water');
+      setIntakeNotes('');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save entry. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleLeakageSubmit = () => {
+  const handleLeakageSubmit = async () => {
     if (!leakageAmount) {
       toast({
         title: "Missing information",
@@ -131,22 +146,33 @@ export function EntryForm() {
       return;
     }
 
-    addLeakageEvent({
-      timestamp: getTimestamp(leakageTime),
-      amount: leakageAmount as 'small' | 'medium' | 'large',
-      trigger: leakageTrigger || undefined,
-      notes: leakageNotes || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await addLeakageEntry({
+        time: leakageTime,
+        amount: leakageAmount as 'small' | 'medium' | 'large',
+        trigger: leakageTrigger || undefined,
+        notes: leakageNotes || undefined,
+      });
 
-    toast({
-      title: "Event recorded",
-      description: "Your leakage event has been logged.",
-    });
+      toast({
+        title: "Event recorded",
+        description: "Your leakage event has been logged.",
+      });
 
-    // Reset form
-    setLeakageAmount('');
-    setLeakageTrigger('');
-    setLeakageNotes('');
+      // Reset form
+      setLeakageAmount('');
+      setLeakageTrigger('');
+      setLeakageNotes('');
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save entry. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const quickVolumes = [150, 200, 250, 300, 350, 400];
@@ -282,8 +308,13 @@ export function EntryForm() {
                 size="lg" 
                 className="w-full"
                 onClick={handleVoidSubmit}
+                disabled={isSubmitting}
               >
-                <CheckCircle2 className="h-5 w-5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5" />
+                )}
                 Log Bathroom Visit
               </Button>
             </CardContent>
@@ -386,8 +417,13 @@ export function EntryForm() {
                 size="lg" 
                 className="w-full"
                 onClick={handleIntakeSubmit}
+                disabled={isSubmitting}
               >
-                <CheckCircle2 className="h-5 w-5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5" />
+                )}
                 Log Fluid Intake
               </Button>
             </CardContent>
@@ -473,8 +509,13 @@ export function EntryForm() {
                 size="lg" 
                 className="w-full"
                 onClick={handleLeakageSubmit}
+                disabled={isSubmitting}
               >
-                <CheckCircle2 className="h-5 w-5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="h-5 w-5" />
+                )}
                 Log Leakage Event
               </Button>
             </CardContent>
@@ -482,20 +523,13 @@ export function EntryForm() {
         </TabsContent>
       </Tabs>
 
-      {/* Encouragement */}
-      <Card variant="highlight" className="animate-fade-in">
-        <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-highlight-strong/10">
-            <Sparkles className="h-5 w-5 text-highlight-strong" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">You're doing great!</p>
-            <p className="text-sm text-muted-foreground">
-              Consistent tracking helps you and your healthcare provider understand your patterns better.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <Button 
+        variant="outline" 
+        className="w-full"
+        onClick={() => setCurrentView('dashboard')}
+      >
+        Back to Dashboard
+      </Button>
     </div>
   );
 }
