@@ -39,34 +39,112 @@ serve(async (req) => {
       }
     }));
 
-    const systemPrompt = `You are a medical data extraction assistant specialized in parsing handwritten bladder/urine diaries. Your task is to extract structured data from handwritten diary images.
+    const systemPrompt = `You are a medical data extraction assistant specialized in parsing bladder/urine diaries from images of handwritten or printed tables.
 
-EXTRACTION RULES:
-1. Extract ALL entries you can identify from the image(s)
-2. For each void event, extract: time, volume (in ml), urgency level (1-5 if noted), and any notes
-3. For each fluid intake, extract: time, volume (in ml), type of fluid (water, coffee, tea, juice, alcohol, other)
-4. For each leakage event, extract: time, amount (small/medium/large), trigger if noted, and any notes
-5. Convert all times to 24-hour format (HH:MM)
-6. Convert volumes to ml (1 oz ≈ 30ml, 1 cup ≈ 240ml)
-7. If handwriting is unclear, set confidence to "low" and include your best interpretation
+CRITICAL: You must process EACH ROW INDEPENDENTLY. Do NOT reuse values from one row for another row.
+
+EXPECTED TABLE COLUMNS (may vary):
+- Date (extract the specific date for EACH row)
+- Time
+- Drink/Intake (ml)
+- Voided Urine (ml)
+- Leakage Event (Yes/No or checkbox)
+- Urgency (1-5 scale)
+- Dry pad weight (g) - weight of pad before use
+- Wet pad weight (g) - weight of pad after leakage
+- Activity during leakage / Trigger
+- Comments / Notes
+
+EXTRACTION RULES - PROCESS EACH ROW INDEPENDENTLY:
+
+1. DATE EXTRACTION (PER ROW):
+   - Read the Date column value for EACH row separately
+   - Do NOT copy the date from the first row to all other rows
+   - If a row has no date but is on the same page as dated rows, use the closest previous date
+   - Format: YYYY-MM-DD
+
+2. TIME EXTRACTION (PER ROW):
+   - Extract the time from each row's Time column
+   - Convert to 24-hour format (HH:MM)
+
+3. PAD WEIGHT CALCULATION (PER ROW):
+   - For EACH row, read the Dry pad weight (g) if present
+   - For EACH row, read the Wet pad weight (g) if present
+   - Each row's pad weights are independent - do NOT reuse weights across rows
+   - If both dry and wet weights exist for a row, the net leakage = wet - dry
+   - If either weight is missing for a row, set both to null for that row
+
+4. EVENT TYPE DETECTION (PER ROW):
+   - A row can generate MULTIPLE events if multiple columns have values
+   - If "Voided Urine" has a value → create a void event
+   - If "Drink/Intake" has a value → create an intake event  
+   - If "Leakage Event" is Yes/checked OR wet/dry pad weights exist → create a leakage event
+   - Each event from the same row shares that row's date and time
+
+5. VOLUME CONVERSION:
+   - Convert all volumes to ml (1 oz ≈ 30ml, 1 cup ≈ 240ml)
+
+6. CONFIDENCE SCORING:
+   - "high" = clearly readable, unambiguous values
+   - "medium" = somewhat unclear but reasonable interpretation
+   - "low" = uncertain, handwriting illegible, or guessing
 
 OUTPUT FORMAT (JSON):
 {
   "voids": [
-    { "time": "HH:MM", "volume": number, "urgency": number|null, "notes": string|null, "confidence": "high"|"medium"|"low" }
+    { 
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM", 
+      "volume": number, 
+      "urgency": number|null, 
+      "notes": string|null, 
+      "confidence": "high"|"medium"|"low" 
+    }
   ],
   "intakes": [
-    { "time": "HH:MM", "volume": number, "type": string|null, "notes": string|null, "confidence": "high"|"medium"|"low" }
+    { 
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM", 
+      "volume": number, 
+      "type": string|null, 
+      "notes": string|null, 
+      "confidence": "high"|"medium"|"low" 
+    }
   ],
   "leakages": [
-    { "time": "HH:MM", "amount": "small"|"medium"|"large", "trigger": string|null, "notes": string|null, "confidence": "high"|"medium"|"low" }
+    { 
+      "date": "YYYY-MM-DD",
+      "time": "HH:MM", 
+      "amount": "small"|"medium"|"large"|null,
+      "dry_pad_weight_g": number|null,
+      "wet_pad_weight_g": number|null,
+      "trigger": string|null, 
+      "notes": string|null, 
+      "confidence": "high"|"medium"|"low" 
+    }
   ],
-  "rawText": "transcribed text from the diary",
-  "parsingNotes": "any issues or uncertainties encountered during parsing",
-  "overallConfidence": "high"|"medium"|"low"
+  "rawText": "transcribed text from the diary showing row-by-row data",
+  "parsingNotes": "any issues encountered, rows skipped, or uncertainties",
+  "overallConfidence": "high"|"medium"|"low",
+  "debugInfo": [
+    {
+      "rowNumber": number,
+      "extractedDate": "YYYY-MM-DD",
+      "extractedTime": "HH:MM",
+      "dryPadWeight": number|null,
+      "wetPadWeight": number|null,
+      "computedNetLeakage": number|null,
+      "eventsCreated": ["void"|"intake"|"leakage"]
+    }
+  ]
 }
 
-Be thorough but honest about uncertainty. Always output valid JSON.`;
+IMPORTANT REMINDERS:
+- Process ROW BY ROW - each row is independent
+- Each row's date, time, and pad weights belong ONLY to that row
+- Do not carry forward or reuse values between rows
+- Include debugInfo to help verify correct parsing
+- Always output valid JSON`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -81,12 +159,12 @@ Be thorough but honest about uncertainty. Always output valid JSON.`;
           { 
             role: 'user', 
             content: [
-              { type: 'text', text: 'Please extract all diary entries from this handwritten bladder diary image(s). Parse all voids, fluid intakes, and leakage events into structured data. Return ONLY valid JSON.' },
+              { type: 'text', text: 'Please extract all diary entries from this bladder diary image(s). Process EACH ROW INDEPENDENTLY - extract the date, time, and pad weights separately for each row. Do NOT reuse values across rows. Include the debugInfo array showing what was extracted from each row. Return ONLY valid JSON.' },
               ...imageContents
             ]
           }
         ],
-        max_tokens: 8192,
+        max_tokens: 16384,
       }),
     });
 
@@ -143,6 +221,35 @@ Be thorough but honest about uncertainty. Always output valid JSON.`;
 
     try {
       const parsedData = JSON.parse(jsonStr);
+      
+      // Log debug info if present
+      if (parsedData.debugInfo && Array.isArray(parsedData.debugInfo)) {
+        console.log('=== ROW-BY-ROW DEBUG INFO ===');
+        parsedData.debugInfo.forEach((row: any) => {
+          console.log(`Row ${row.rowNumber}: Date=${row.extractedDate}, Time=${row.extractedTime}, DryPad=${row.dryPadWeight}, WetPad=${row.wetPadWeight}, NetLeakage=${row.computedNetLeakage}, Events=${JSON.stringify(row.eventsCreated)}`);
+        });
+        console.log('=== END DEBUG INFO ===');
+      }
+      
+      // Log individual entries for verification
+      console.log('=== PARSED ENTRIES SUMMARY ===');
+      console.log('Voids:');
+      parsedData.voids?.forEach((v: any, i: number) => {
+        console.log(`  [${i}] Date: ${v.date}, Time: ${v.time}, Volume: ${v.volume}ml, Urgency: ${v.urgency}`);
+      });
+      console.log('Intakes:');
+      parsedData.intakes?.forEach((i: any, idx: number) => {
+        console.log(`  [${idx}] Date: ${i.date}, Time: ${i.time}, Volume: ${i.volume}ml, Type: ${i.type}`);
+      });
+      console.log('Leakages:');
+      parsedData.leakages?.forEach((l: any, i: number) => {
+        const netWeight = (l.dry_pad_weight_g && l.wet_pad_weight_g) 
+          ? (l.wet_pad_weight_g - l.dry_pad_weight_g) 
+          : null;
+        console.log(`  [${i}] Date: ${l.date}, Time: ${l.time}, DryPad: ${l.dry_pad_weight_g}g, WetPad: ${l.wet_pad_weight_g}g, NetLeakage: ${netWeight}g, Amount: ${l.amount}`);
+      });
+      console.log('=== END PARSED ENTRIES ===');
+      
       console.log('Successfully parsed diary data:', {
         voids: parsedData.voids?.length || 0,
         intakes: parsedData.intakes?.length || 0,

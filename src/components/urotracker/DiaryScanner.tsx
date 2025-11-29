@@ -272,7 +272,8 @@ export function DiaryScanner() {
                       setSelectedVoids(newSet);
                     }}
                   />
-                  <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+                  <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
+                    <span className="text-muted-foreground">{entry.date || 'No date'}</span>
                     <span className="font-medium">{entry.time}</span>
                     <span>{entry.volume}ml</span>
                     <span>{entry.urgency ? `Urgency: ${entry.urgency}` : ''}</span>
@@ -307,7 +308,8 @@ export function DiaryScanner() {
                       setSelectedIntakes(newSet);
                     }}
                   />
-                  <div className="flex-1 grid grid-cols-3 gap-2 text-sm">
+                  <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
+                    <span className="text-muted-foreground">{entry.date || 'No date'}</span>
                     <span className="font-medium">{entry.time}</span>
                     <span>{entry.volume}ml</span>
                     <span className="capitalize">{entry.type || 'Unknown'}</span>
@@ -342,16 +344,17 @@ export function DiaryScanner() {
                       setSelectedLeakages(newSet);
                     }}
                   />
-                  <div className="flex-1 grid grid-cols-4 gap-2 text-sm">
+                  <div className="flex-1 grid grid-cols-5 gap-2 text-sm">
+                    <span className="text-muted-foreground">{entry.date || 'No date'}</span>
                     <span className="font-medium">{entry.time}</span>
                     <span className="capitalize">{entry.amount || '—'}</span>
                     <span>
-                      {entry.dry_pad_weight_g && entry.wet_pad_weight_g
+                      {entry.dry_pad_weight_g != null && entry.wet_pad_weight_g != null
                         ? `${Math.max(0, entry.wet_pad_weight_g - entry.dry_pad_weight_g).toFixed(0)}g`
-                        : entry.trigger || ''}
+                        : entry.trigger || '—'}
                     </span>
-                    <span className="text-muted-foreground">
-                      {entry.dry_pad_weight_g && entry.wet_pad_weight_g
+                    <span className="text-muted-foreground text-xs">
+                      {entry.dry_pad_weight_g != null && entry.wet_pad_weight_g != null
                         ? `(${entry.dry_pad_weight_g}→${entry.wet_pad_weight_g}g)`
                         : ''}
                     </span>
