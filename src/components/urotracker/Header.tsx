@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Droplets, LayoutDashboard, PlusCircle, Brain, User, Camera, List, LogOut, FileDown, Shield } from 'lucide-react';
+import { Droplets, LayoutDashboard, PlusCircle, Brain, User, List, LogOut, FileDown, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDiary } from '@/context/DiaryContext';
 import { useAuth } from '@/context/AuthContext';
@@ -18,8 +18,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 const navItems: { view: ViewType; label: string; icon: React.ElementType }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { view: 'entry', label: 'Log Entry', icon: PlusCircle },
-  { view: 'scan', label: 'Scan Diary', icon: Camera },
+  { view: 'entry', label: 'New Entry', icon: PlusCircle },
   { view: 'overview', label: 'All Entries', icon: List },
   { view: 'insights', label: 'Insights', icon: Brain },
   { view: 'profile', label: 'Profile', icon: User },

@@ -83,6 +83,87 @@ export type Database = {
         }
         Relationships: []
       }
+      recording_blocks: {
+        Row: {
+          clinical_patterns: Json | null
+          created_at: string
+          day_void_count: number | null
+          day_voided_ml: number | null
+          end_datetime: string
+          id: string
+          intake_count: number | null
+          leakage_count: number | null
+          max_void_volume: number | null
+          median_void_volume: number | null
+          min_void_volume: number | null
+          night_void_count: number | null
+          night_voided_ml: number | null
+          overall_assessment: string | null
+          start_datetime: string
+          status: string
+          total_intake_ml: number | null
+          total_leakage_weight_g: number | null
+          total_voided_ml: number | null
+          treatment_plan: string | null
+          treatment_plan_updated_at: string | null
+          updated_at: string
+          user_id: string | null
+          void_count: number | null
+        }
+        Insert: {
+          clinical_patterns?: Json | null
+          created_at?: string
+          day_void_count?: number | null
+          day_voided_ml?: number | null
+          end_datetime: string
+          id?: string
+          intake_count?: number | null
+          leakage_count?: number | null
+          max_void_volume?: number | null
+          median_void_volume?: number | null
+          min_void_volume?: number | null
+          night_void_count?: number | null
+          night_voided_ml?: number | null
+          overall_assessment?: string | null
+          start_datetime: string
+          status?: string
+          total_intake_ml?: number | null
+          total_leakage_weight_g?: number | null
+          total_voided_ml?: number | null
+          treatment_plan?: string | null
+          treatment_plan_updated_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+          void_count?: number | null
+        }
+        Update: {
+          clinical_patterns?: Json | null
+          created_at?: string
+          day_void_count?: number | null
+          day_voided_ml?: number | null
+          end_datetime?: string
+          id?: string
+          intake_count?: number | null
+          leakage_count?: number | null
+          max_void_volume?: number | null
+          median_void_volume?: number | null
+          min_void_volume?: number | null
+          night_void_count?: number | null
+          night_voided_ml?: number | null
+          overall_assessment?: string | null
+          start_datetime?: string
+          status?: string
+          total_intake_ml?: number | null
+          total_leakage_weight_g?: number | null
+          total_voided_ml?: number | null
+          treatment_plan?: string | null
+          treatment_plan_updated_at?: string | null
+          updated_at?: string
+          user_id?: string | null
+          void_count?: number | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

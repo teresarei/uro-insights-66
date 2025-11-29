@@ -3,11 +3,10 @@ import { DiaryProvider, useDiary } from '@/context/DiaryContext';
 import { BankIDLogin } from '@/components/auth/BankIDLogin';
 import { Header } from '@/components/urotracker/Header';
 import { Dashboard } from '@/components/urotracker/Dashboard';
-import { EntryForm } from '@/components/urotracker/EntryForm';
-import { ClinicalInsights } from '@/components/urotracker/ClinicalInsights';
+import { NewEntryPage } from '@/components/urotracker/NewEntryPage';
 import { UserProfile } from '@/components/urotracker/UserProfile';
-import { DiaryScanner } from '@/components/urotracker/DiaryScanner';
 import { EntriesOverview } from '@/components/urotracker/EntriesOverview';
+import { RecordingBlocksTimeline } from '@/components/urotracker/RecordingBlocksTimeline';
 
 function AppContent() {
   const { currentView } = useDiary();
@@ -17,13 +16,11 @@ function AppContent() {
       case 'dashboard':
         return <Dashboard />;
       case 'entry':
-        return <EntryForm />;
-      case 'scan':
-        return <DiaryScanner />;
+        return <NewEntryPage />;
       case 'overview':
         return <EntriesOverview />;
       case 'insights':
-        return <ClinicalInsights />;
+        return <RecordingBlocksTimeline />;
       case 'profile':
         return <UserProfile />;
       default:

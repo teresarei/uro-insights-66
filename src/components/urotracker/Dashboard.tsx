@@ -17,7 +17,7 @@ import {
   PlusCircle,
   ArrowRight,
   Clock,
-  Camera,
+  Brain,
   Loader2,
   Scale,
   Calendar,
@@ -518,17 +518,17 @@ export function Dashboard() {
         <Button 
           variant="soft" 
           size="lg" 
-          onClick={() => setCurrentView('scan')}
+          onClick={() => setCurrentView('insights')}
         >
-          <Camera className="h-5 w-5" />
-          Scan Diary
+          <Brain className="h-5 w-5" />
+          View Insights
         </Button>
         <Button 
           variant="outline" 
           size="lg" 
-          onClick={() => setCurrentView('insights')}
+          onClick={() => setCurrentView('overview')}
         >
-          View Insights
+          All Entries
           <ArrowRight className="h-5 w-5" />
         </Button>
       </div>

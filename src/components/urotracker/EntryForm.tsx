@@ -186,16 +186,7 @@ export function EntryForm() {
   const quickIntakes = [150, 200, 250, 330, 500];
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Log a new entry
-        </h1>
-        <p className="text-muted-foreground">
-          Track your bathroom visits, fluid intake, and any incidents—one step at a time.
-        </p>
-      </div>
-
+    <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as EntryType)}>
         <TabsList className="grid w-full grid-cols-3 h-12 p-1 bg-muted rounded-xl">
           <TabsTrigger 

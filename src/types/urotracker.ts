@@ -56,4 +56,31 @@ export interface ClinicalPattern {
   recommendation: string;
 }
 
-export type ViewType = 'welcome' | 'dashboard' | 'entry' | 'insights' | 'profile' | 'scan' | 'overview';
+export interface RecordingBlock {
+  id: string;
+  user_id?: string;
+  start_datetime: string;
+  end_datetime: string;
+  status: 'incomplete' | 'complete';
+  void_count: number;
+  leakage_count: number;
+  intake_count: number;
+  total_voided_ml: number;
+  total_intake_ml: number;
+  total_leakage_weight_g: number;
+  day_voided_ml: number;
+  night_voided_ml: number;
+  day_void_count: number;
+  night_void_count: number;
+  median_void_volume: number | null;
+  max_void_volume: number | null;
+  min_void_volume: number | null;
+  clinical_patterns: ClinicalPattern[];
+  overall_assessment: string | null;
+  treatment_plan: string | null;
+  treatment_plan_updated_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ViewType = 'welcome' | 'dashboard' | 'entry' | 'insights' | 'profile' | 'overview';
