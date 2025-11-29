@@ -27,6 +27,7 @@ interface DiaryContextType {
   getStats: () => ComputedStats;
   getEntriesLast48Hours: () => DiaryEntry[];
   getVoidsPer24Hours: () => number;
+  getLeakageWeight24Hours: () => number;
 }
 
 const DiaryContext = createContext<DiaryContextType | undefined>(undefined);
@@ -44,6 +45,7 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     getEntriesLast48Hours,
     computeStats,
     getVoidsPer24Hours,
+    getLeakageWeight24Hours,
   } = useEntries();
 
   const addVoidEntry = async (data: { 
@@ -153,6 +155,7 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       getStats,
       getEntriesLast48Hours,
       getVoidsPer24Hours,
+      getLeakageWeight24Hours,
     }}>
       {children}
     </DiaryContext.Provider>

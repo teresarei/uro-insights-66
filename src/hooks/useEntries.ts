@@ -214,20 +214,31 @@ export function useEntries() {
     };
   }, [getEntriesLast48Hours]);
 
-  // Get voids in the last 24 hours
-  const getVoidsPer24Hours = useCallback((): number => {
+  // Get entries in the last 24 hours
+  const getEntriesLast24Hours = useCallback((): DiaryEntry[] => {
     const now = new Date();
     const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const cutoffDate = cutoff.toISOString().split('T')[0];
     const cutoffTime = cutoff.toTimeString().split(' ')[0];
 
     return entries.filter(entry => {
-      if (entry.event_type !== 'void') return false;
       if (entry.date > cutoffDate) return true;
       if (entry.date === cutoffDate && entry.time >= cutoffTime) return true;
       return false;
-    }).length;
+    });
   }, [entries]);
+
+  // Get voids in the last 24 hours
+  const getVoidsPer24Hours = useCallback((): number => {
+    return getEntriesLast24Hours().filter(e => e.event_type === 'void').length;
+  }, [getEntriesLast24Hours]);
+
+  // Get total leakage weight in the last 24 hours
+  const getLeakageWeight24Hours = useCallback((): number => {
+    return getEntriesLast24Hours()
+      .filter(e => e.event_type === 'leakage')
+      .reduce((sum, l) => sum + (l.leakage_weight_g || 0), 0);
+  }, [getEntriesLast24Hours]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -273,7 +284,9 @@ export function useEntries() {
     deleteEntry,
     getEntriesInRange,
     getEntriesLast48Hours,
+    getEntriesLast24Hours,
     computeStats,
     getVoidsPer24Hours,
+    getLeakageWeight24Hours,
   };
 }
