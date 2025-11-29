@@ -1,0 +1,219 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    /* Warm, calming health palette */
+    --background: 40 30% 98%;
+    --foreground: 200 25% 20%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 25% 20%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 25% 20%;
+
+    /* Soft teal - calming, health-positive */
+    --primary: 168 45% 45%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Warm peach accent */
+    --secondary: 25 60% 94%;
+    --secondary-foreground: 25 40% 35%;
+
+    /* Soft lavender muted */
+    --muted: 220 20% 96%;
+    --muted-foreground: 200 15% 50%;
+
+    /* Gentle coral accent */
+    --accent: 15 70% 92%;
+    --accent-foreground: 15 50% 40%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 90%;
+    --input: 200 20% 90%;
+    --ring: 168 45% 45%;
+
+    --radius: 1rem;
+
+    /* Custom UroTracker tokens */
+    --surface-warm: 35 40% 97%;
+    --surface-cool: 200 30% 97%;
+    --highlight: 168 50% 85%;
+    --highlight-strong: 168 45% 45%;
+    --warning-soft: 45 90% 92%;
+    --warning-foreground: 35 60% 35%;
+    --success: 145 50% 45%;
+    --success-soft: 145 50% 92%;
+    --info: 200 60% 50%;
+    --info-soft: 200 60% 94%;
+
+    /* Gradients */
+    --gradient-hero: linear-gradient(135deg, hsl(168 45% 45%) 0%, hsl(180 40% 55%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(40 30% 98%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(35 40% 97%) 0%, hsl(25 60% 96%) 100%);
+    --gradient-surface: linear-gradient(180deg, hsl(200 30% 98%) 0%, hsl(40 30% 98%) 100%);
+
+    /* Shadows */
+    --shadow-soft: 0 4px 20px -4px hsl(200 25% 20% / 0.08);
+    --shadow-card: 0 8px 30px -8px hsl(200 25% 20% / 0.1);
+    --shadow-elevated: 0 12px 40px -12px hsl(200 25% 20% / 0.15);
+
+    /* Sidebar */
+    --sidebar-background: 40 30% 98%;
+    --sidebar-foreground: 200 25% 20%;
+    --sidebar-primary: 168 45% 45%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 168 50% 92%;
+    --sidebar-accent-foreground: 168 45% 30%;
+    --sidebar-border: 200 20% 90%;
+    --sidebar-ring: 168 45% 45%;
+  }
+
+  .dark {
+    --background: 200 25% 10%;
+    --foreground: 40 20% 95%;
+
+    --card: 200 25% 14%;
+    --card-foreground: 40 20% 95%;
+
+    --popover: 200 25% 14%;
+    --popover-foreground: 40 20% 95%;
+
+    --primary: 168 45% 50%;
+    --primary-foreground: 200 25% 10%;
+
+    --secondary: 200 20% 20%;
+    --secondary-foreground: 40 20% 90%;
+
+    --muted: 200 20% 18%;
+    --muted-foreground: 200 15% 60%;
+
+    --accent: 200 20% 22%;
+    --accent-foreground: 40 20% 90%;
+
+    --destructive: 0 60% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 20% 20%;
+    --input: 200 20% 20%;
+    --ring: 168 45% 50%;
+
+    --surface-warm: 200 20% 14%;
+    --surface-cool: 200 25% 12%;
+    --highlight: 168 40% 25%;
+    --highlight-strong: 168 45% 50%;
+    --warning-soft: 45 40% 18%;
+    --warning-foreground: 45 70% 75%;
+    --success: 145 45% 50%;
+    --success-soft: 145 30% 20%;
+    --info: 200 50% 55%;
+    --info-soft: 200 40% 20%;
+
+    --gradient-hero: linear-gradient(135deg, hsl(168 45% 40%) 0%, hsl(180 35% 45%) 100%);
+    --gradient-card: linear-gradient(180deg, hsl(200 25% 14%) 0%, hsl(200 25% 12%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(200 20% 14%) 0%, hsl(200 20% 16%) 100%);
+    --gradient-surface: linear-gradient(180deg, hsl(200 25% 12%) 0%, hsl(200 25% 10%) 100%);
+
+    --shadow-soft: 0 4px 20px -4px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 8px 30px -8px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 12px 40px -12px hsl(0 0% 0% / 0.5);
+
+    --sidebar-background: 200 25% 10%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 168 45% 50%;
+    --sidebar-primary-foreground: 200 25% 10%;
+    --sidebar-accent: 168 30% 20%;
+    --sidebar-accent-foreground: 168 45% 80%;
+    --sidebar-border: 200 20% 20%;
+    --sidebar-ring: 168 45% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .gradient-hero {
+    background: var(--gradient-hero);
+  }
+
+  .gradient-card {
+    background: var(--gradient-card);
+  }
+
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+
+  .gradient-surface {
+    background: var(--gradient-surface);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-pulse-soft {
+    animation: pulse-soft 3s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes slide-up {
+  from { 
+    opacity: 0; 
+    transform: translateY(20px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
