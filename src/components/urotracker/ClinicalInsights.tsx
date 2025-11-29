@@ -1,5 +1,5 @@
 import { useDiary } from '@/context/DiaryContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -16,18 +16,22 @@ import { ClinicalPattern } from '@/types/urotracker';
 import { cn } from '@/lib/utils';
 
 export function ClinicalInsights() {
-  const { entries, getStats, userProfile, setCurrentView } = useDiary();
+  const { entries, getStats, userProfile, setCurrentView, getEntriesLast48Hours } = useDiary();
   const stats = getStats();
+  const recentEntries = getEntriesLast48Hours();
 
   // Generate clinical patterns based on diary data and EAU guidelines
   const generatePatterns = (): ClinicalPattern[] => {
     const patterns: ClinicalPattern[] = [];
+    
+    const voids = recentEntries.filter(e => e.event_type === 'void');
+    const leakages = recentEntries.filter(e => e.event_type === 'leakage');
+    const uniqueDays = new Set(recentEntries.map(e => e.date)).size || 1;
 
     // Check for overactive bladder pattern
-    // EAU: Frequency >8 voids/day with urgency
     if (stats.avgVoidsPerDay > 8) {
-      const urgentVoids = entries.flatMap(e => e.voids).filter(v => v.urgency && v.urgency >= 4);
-      const urgencyRate = urgentVoids.length / stats.totalVoids;
+      const urgentVoids = voids.filter(v => v.urgency && v.urgency >= 4);
+      const urgencyRate = voids.length > 0 ? urgentVoids.length / voids.length : 0;
       
       if (urgencyRate > 0.3 || stats.medianVolume < 200) {
         patterns.push({
@@ -40,14 +44,11 @@ export function ClinicalInsights() {
     }
 
     // Check for stress incontinence
-    // Based on leakage triggers
     const stressTriggers = ['cough', 'sneeze', 'laugh', 'exercise', 'lifting'];
-    const stressLeakages = entries.flatMap(e => e.leakages).filter(
-      l => l.trigger && stressTriggers.includes(l.trigger)
-    );
+    const stressLeakages = leakages.filter(l => l.trigger && stressTriggers.includes(l.trigger));
     
     if (stressLeakages.length > 0) {
-      const rate = stressLeakages.length / (stats.totalLeakages || 1);
+      const rate = stressLeakages.length / (leakages.length || 1);
       patterns.push({
         name: 'Stress Urinary Incontinence',
         probability: rate > 0.7 ? 'high' : rate > 0.4 ? 'moderate' : 'low',
@@ -57,9 +58,7 @@ export function ClinicalInsights() {
     }
 
     // Check for urge incontinence
-    const urgeLeakages = entries.flatMap(e => e.leakages).filter(
-      l => l.trigger === 'urgency'
-    );
+    const urgeLeakages = leakages.filter(l => l.trigger === 'urgency');
     
     if (urgeLeakages.length > 0) {
       patterns.push({
@@ -71,20 +70,17 @@ export function ClinicalInsights() {
     }
 
     // Check for nocturia
-    // EAU: ≥2 nighttime voids
-    if (stats.nightVoids >= 2 * entries.length) {
+    if (stats.nightVoids >= 2 * uniqueDays) {
       patterns.push({
         name: 'Nocturia',
-        probability: stats.nightVoids >= 3 * entries.length ? 'high' : 'moderate',
-        reasoning: `Averaging ${(stats.nightVoids / entries.length).toFixed(1)} nighttime voids may indicate nocturia. This can impact sleep quality.`,
+        probability: stats.nightVoids >= 3 * uniqueDays ? 'high' : 'moderate',
+        reasoning: `Averaging ${(stats.nightVoids / uniqueDays).toFixed(1)} nighttime voids may indicate nocturia. This can impact sleep quality.`,
         recommendation: 'Consider reducing evening fluid intake, especially caffeine and alcohol. Rule out other causes with your doctor.',
       });
     }
 
     // Check for polyuria
-    const avgDailyOutput = entries.reduce((sum, e) => 
-      sum + e.voids.reduce((s, v) => s + v.volume, 0), 0
-    ) / entries.length;
+    const avgDailyOutput = voids.reduce((sum, v) => sum + (v.volume_ml || 0), 0) / uniqueDays;
     
     if (avgDailyOutput > 2500) {
       patterns.push({
@@ -95,7 +91,7 @@ export function ClinicalInsights() {
       });
     }
 
-    // Check for low voided volumes (possible incomplete emptying)
+    // Check for low voided volumes
     if (stats.medianVolume < 150 && stats.avgVoidsPerDay > 10) {
       patterns.push({
         name: 'Possible Incomplete Bladder Emptying',
@@ -105,7 +101,6 @@ export function ClinicalInsights() {
       });
     }
 
-    // If no patterns detected
     if (patterns.length === 0 && entries.length > 0) {
       patterns.push({
         name: 'No Concerning Patterns Detected',
@@ -119,6 +114,7 @@ export function ClinicalInsights() {
   };
 
   const patterns = generatePatterns();
+  const uniqueDays = new Set(entries.map(e => e.date)).size;
 
   const probabilityColors = {
     high: 'bg-destructive/10 text-destructive border-destructive/20',
@@ -138,9 +134,7 @@ export function ClinicalInsights() {
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-info-soft mb-6">
           <Brain className="h-10 w-10 text-info" />
         </div>
-        <h2 className="text-2xl font-semibold text-foreground mb-2">
-          Not enough data yet
-        </h2>
+        <h2 className="text-2xl font-semibold text-foreground mb-2">Not enough data yet</h2>
         <p className="text-muted-foreground max-w-md mb-8">
           Log at least a few days of entries to generate meaningful clinical insights.
         </p>
@@ -155,15 +149,10 @@ export function ClinicalInsights() {
   return (
     <div className="space-y-6 animate-slide-up">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground">
-          Possible Clinical Patterns
-        </h1>
-        <p className="text-muted-foreground">
-          Based on EAU guidelines and your {entries.length}-day diary
-        </p>
+        <h1 className="text-2xl font-semibold text-foreground">Possible Clinical Patterns</h1>
+        <p className="text-muted-foreground">Based on EAU guidelines and your {uniqueDays}-day diary</p>
       </div>
 
-      {/* Important disclaimer */}
       <Card variant="warning">
         <CardContent className="flex gap-4 p-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning-foreground/10">
@@ -173,60 +162,38 @@ export function ClinicalInsights() {
             <p className="font-medium text-warning-foreground">Medical Disclaimer</p>
             <p className="text-sm text-warning-foreground/80">
               These patterns may offer clues, but <strong>only a healthcare professional can give a diagnosis</strong>. 
-              This tool is for informational purposes only and should not replace medical advice.
+              This tool is for informational purposes only.
             </p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Pattern cards */}
       <div className="space-y-4">
         {patterns.map((pattern, index) => {
           const ProbabilityIcon = probabilityIcons[pattern.probability];
-          
           return (
-            <Card 
-              key={index} 
-              variant="elevated" 
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
+            <Card key={index} variant="elevated" className="animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-4">
-                  <CardTitle className="flex items-center gap-2">
+                  <div className="flex items-center gap-2">
                     <HeartPulse className="h-5 w-5 text-primary" />
-                    {pattern.name}
-                  </CardTitle>
-                  <Badge 
-                    variant="outline"
-                    className={cn(
-                      "flex items-center gap-1 px-2 py-1",
-                      probabilityColors[pattern.probability]
-                    )}
-                  >
+                    <span className="font-semibold">{pattern.name}</span>
+                  </div>
+                  <Badge variant="outline" className={cn("flex items-center gap-1 px-2 py-1", probabilityColors[pattern.probability])}>
                     <ProbabilityIcon className="h-3 w-3" />
-                    {pattern.probability.charAt(0).toUpperCase() + pattern.probability.slice(1)} likelihood
+                    {pattern.probability.charAt(0).toUpperCase() + pattern.probability.slice(1)}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Brain className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">Pattern reasoning</p>
-                      <p className="text-sm text-muted-foreground">{pattern.reasoning}</p>
-                    </div>
-                  </div>
+                <div className="flex items-start gap-2">
+                  <Brain className="h-4 w-4 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-sm text-muted-foreground">{pattern.reasoning}</p>
                 </div>
-                
                 <div className="p-4 rounded-xl bg-highlight/50 border border-highlight-strong/10">
                   <div className="flex items-start gap-2">
                     <Info className="h-4 w-4 text-highlight-strong mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">What you can do</p>
-                      <p className="text-sm text-muted-foreground">{pattern.recommendation}</p>
-                    </div>
+                    <p className="text-sm text-muted-foreground">{pattern.recommendation}</p>
                   </div>
                 </div>
               </CardContent>
@@ -235,39 +202,15 @@ export function ClinicalInsights() {
         })}
       </div>
 
-      {/* Encouragement */}
-      <Card variant="success">
-        <CardContent className="flex items-center gap-4 p-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-success/10">
-            <CheckCircle className="h-5 w-5 text-success" />
-          </div>
-          <div>
-            <p className="font-medium text-foreground">Knowledge is power</p>
-            <p className="text-sm text-muted-foreground">
-              Bringing this data to your healthcare provider can lead to more productive conversations and better outcomes.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Profile CTA if not filled */}
       {(!userProfile.sex || !userProfile.age) && (
         <Card variant="insight">
           <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-info/10">
-                <Info className="h-5 w-5 text-info" />
-              </div>
-              <div>
-                <p className="font-medium text-foreground">Improve your insights</p>
-                <p className="text-sm text-muted-foreground">
-                  Add your profile information for more personalized analysis
-                </p>
-              </div>
+              <Info className="h-5 w-5 text-info" />
+              <p className="text-sm text-muted-foreground">Add your profile for more personalized analysis</p>
             </div>
-            <Button variant="outline" onClick={() => setCurrentView('profile')}>
+            <Button variant="outline" size="sm" onClick={() => setCurrentView('profile')}>
               Complete Profile
-              <ArrowRight className="h-4 w-4" />
             </Button>
           </CardContent>
         </Card>

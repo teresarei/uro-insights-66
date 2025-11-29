@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useDiary } from '@/context/DiaryContext';
 import { StatCard } from './StatCard';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,7 +15,8 @@ import {
   PlusCircle,
   ArrowRight,
   Clock,
-  Camera
+  Camera,
+  Loader2
 } from 'lucide-react';
 import {
   AreaChart,
@@ -27,30 +29,55 @@ import {
   BarChart,
   Bar,
 } from 'recharts';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export function Dashboard() {
-  const { entries, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours } = useDiary();
+  const { entries, loading, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours } = useDiary();
   const stats = getStats();
   const recentEntries = getEntriesLast48Hours();
   const voidsPer24h = getVoidsPer24Hours();
 
-  // Prepare chart data - use 48-hour filtered data
-  const dailyData = recentEntries.map(entry => ({
-    date: format(entry.date, 'EEE'),
-    fullDate: format(entry.date, 'MMM d'),
-    voids: entry.voids.length,
-    leakages: entry.leakages.length,
-    intake: Math.round(entry.intakes.reduce((sum, i) => sum + i.volume, 0) / 100) / 10, // in liters
-    avgVolume: entry.voids.length > 0 
-      ? Math.round(entry.voids.reduce((sum, v) => sum + v.volume, 0) / entry.voids.length)
-      : 0,
-  }));
+  // Prepare chart data - group entries by date
+  const dailyData = useMemo(() => {
+    const grouped = new Map<string, { voids: number; leakages: number; intake: number; avgVolume: number; totalVolume: number; voidCount: number }>();
+    
+    recentEntries.forEach(entry => {
+      const dateKey = entry.date;
+      const current = grouped.get(dateKey) || { voids: 0, leakages: 0, intake: 0, avgVolume: 0, totalVolume: 0, voidCount: 0 };
+      
+      if (entry.event_type === 'void') {
+        current.voids++;
+        current.voidCount++;
+        current.totalVolume += entry.volume_ml || 0;
+      } else if (entry.event_type === 'leakage') {
+        current.leakages++;
+      } else if (entry.event_type === 'intake') {
+        current.intake += (entry.volume_ml || 0) / 1000; // Convert to liters
+      }
+      
+      grouped.set(dateKey, current);
+    });
 
-  const dayNightData = [
-    { name: 'Day (7am-11pm)', value: stats.dayVoids, fill: 'hsl(var(--primary))' },
-    { name: 'Night (11pm-7am)', value: stats.nightVoids, fill: 'hsl(var(--info))' },
-  ];
+    return Array.from(grouped.entries())
+      .map(([date, data]) => ({
+        date: format(parseISO(date), 'EEE'),
+        fullDate: format(parseISO(date), 'MMM d'),
+        voids: data.voids,
+        leakages: data.leakages,
+        intake: Math.round(data.intake * 10) / 10,
+        avgVolume: data.voidCount > 0 ? Math.round(data.totalVolume / data.voidCount) : 0,
+      }))
+      .sort((a, b) => a.fullDate.localeCompare(b.fullDate));
+  }, [recentEntries]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 px-4 text-center animate-fade-in">
+        <Loader2 className="h-10 w-10 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground">Loading your diary data...</p>
+      </div>
+    );
+  }
 
   if (entries.length === 0) {
     return (
@@ -144,109 +171,111 @@ export function Dashboard() {
       </div>
 
       {/* Charts section */}
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Daily voids chart */}
-        <Card variant="elevated" className="animate-fade-in">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Daily Voiding Pattern
-            </CardTitle>
-            <CardDescription>
-              Number of bathroom trips per day
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyData}>
-                  <defs>
-                    <linearGradient id="voidGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '12px',
-                      boxShadow: 'var(--shadow-card)',
-                    }}
-                    labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="voids"
-                    stroke="hsl(var(--primary))"
-                    strokeWidth={2}
-                    fill="url(#voidGradient)"
-                    name="Voids"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+      {dailyData.length > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Daily voids chart */}
+          <Card variant="elevated" className="animate-fade-in">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-primary" />
+                Daily Voiding Pattern
+              </CardTitle>
+              <CardDescription>
+                Number of bathroom trips per day
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dailyData}>
+                    <defs>
+                      <linearGradient id="voidGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-card)',
+                      }}
+                      labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="voids"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      fill="url(#voidGradient)"
+                      name="Voids"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
 
-        {/* Fluid intake chart */}
-        <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <GlassWater className="h-5 w-5 text-info" />
-              Fluid Intake
-            </CardTitle>
-            <CardDescription>
-              Daily fluid consumption in liters
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke="hsl(var(--muted-foreground))"
-                    fontSize={12}
-                    unit="L"
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: 'hsl(var(--card))',
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '12px',
-                      boxShadow: 'var(--shadow-card)',
-                    }}
-                    formatter={(value: number) => [`${value}L`, 'Intake']}
-                    labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
-                  />
-                  <Bar
-                    dataKey="intake"
-                    fill="hsl(var(--info))"
-                    radius={[6, 6, 0, 0]}
-                    name="Intake"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Fluid intake chart */}
+          <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <GlassWater className="h-5 w-5 text-info" />
+                Fluid Intake
+              </CardTitle>
+              <CardDescription>
+                Daily fluid consumption in liters
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dailyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                    />
+                    <YAxis 
+                      stroke="hsl(var(--muted-foreground))"
+                      fontSize={12}
+                      unit="L"
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: 'hsl(var(--card))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: '12px',
+                        boxShadow: 'var(--shadow-card)',
+                      }}
+                      formatter={(value: number) => [`${value}L`, 'Intake']}
+                      labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
+                    />
+                    <Bar
+                      dataKey="intake"
+                      fill="hsl(var(--info))"
+                      radius={[6, 6, 0, 0]}
+                      name="Intake"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Day vs Night section */}
       <Card variant="warm" className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
@@ -279,10 +308,10 @@ export function Dashboard() {
               </div>
             </div>
           </div>
-          {stats.nightVoids > stats.totalVoids * 0.3 && (
+          {stats.nightVoids > stats.totalVoids * 0.3 && stats.totalVoids > 0 && (
             <div className="mt-4 p-4 rounded-xl bg-info-soft border border-info/20">
               <p className="text-sm text-info">
-                💡 You have more nighttime voids than average. This might be worth discussing with your healthcare provider.
+                You have more nighttime voids than average. This might be worth discussing with your healthcare provider.
               </p>
             </div>
           )}

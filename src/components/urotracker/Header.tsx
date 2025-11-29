@@ -1,4 +1,4 @@
-import { Droplets, LayoutDashboard, PlusCircle, Brain, User, Camera } from 'lucide-react';
+import { Droplets, LayoutDashboard, PlusCircle, Brain, User, Camera, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDiary } from '@/context/DiaryContext';
 import { ViewType } from '@/types/urotracker';
@@ -8,6 +8,7 @@ const navItems: { view: ViewType; label: string; icon: React.ElementType }[] = [
   { view: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { view: 'entry', label: 'Log Entry', icon: PlusCircle },
   { view: 'scan', label: 'Scan Diary', icon: Camera },
+  { view: 'overview', label: 'All Entries', icon: List },
   { view: 'insights', label: 'Insights', icon: Brain },
   { view: 'profile', label: 'Profile', icon: User },
 ];
@@ -28,7 +29,7 @@ export function Header() {
           <span className="text-xl font-semibold text-foreground">UroTracker</span>
         </button>
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-1">
           {navItems.map(({ view, label, icon: Icon }) => (
             <Button
               key={view}
@@ -47,7 +48,7 @@ export function Header() {
         </nav>
 
         {/* Mobile navigation */}
-        <nav className="flex md:hidden items-center gap-1">
+        <nav className="flex lg:hidden items-center gap-1 overflow-x-auto">
           {navItems.map(({ view, icon: Icon }) => (
             <Button
               key={view}
@@ -55,7 +56,7 @@ export function Header() {
               size="icon"
               onClick={() => setCurrentView(view)}
               className={cn(
-                "h-9 w-9",
+                "h-9 w-9 flex-shrink-0",
                 currentView === view && "shadow-soft"
               )}
             >
