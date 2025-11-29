@@ -33,10 +33,11 @@ import {
 import { format, parseISO } from 'date-fns';
 
 export function Dashboard() {
-  const { entries, loading, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours } = useDiary();
+  const { entries, loading, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours, getLeakageWeight24Hours } = useDiary();
   const stats = getStats();
   const recentEntries = getEntriesLast48Hours();
   const voidsPer24h = getVoidsPer24Hours();
+  const leakageWeight24h = getLeakageWeight24Hours();
 
   // Prepare chart data - group entries by hour
   const hourlyData = useMemo(() => {
@@ -143,7 +144,7 @@ export function Dashboard() {
       </Card>
 
       {/* Leakage weight per 24 hours highlight */}
-      {stats.totalLeakageWeight > 0 && (
+      {leakageWeight24h > 0 && (
         <Card variant="elevated" className="border-warning-foreground/30 bg-warning-soft/30">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
@@ -152,8 +153,8 @@ export function Dashboard() {
                   <Scale className="h-6 w-6 text-warning-foreground" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total leakage weight (48h)</p>
-                  <p className="text-3xl font-bold text-foreground">{stats.totalLeakageWeight}g</p>
+                  <p className="text-sm text-muted-foreground">Total leakage weight (24h)</p>
+                  <p className="text-3xl font-bold text-foreground">{leakageWeight24h}g</p>
                 </div>
               </div>
               <div className="text-right">
