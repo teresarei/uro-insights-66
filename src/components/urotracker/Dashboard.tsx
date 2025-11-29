@@ -38,13 +38,16 @@ export function Dashboard() {
   const recentEntries = getEntriesLast48Hours();
   const voidsPer24h = getVoidsPer24Hours();
 
-  // Prepare chart data - group entries by date
-  const dailyData = useMemo(() => {
-    const grouped = new Map<string, { voids: number; leakages: number; intake: number; avgVolume: number; totalVolume: number; voidCount: number }>();
+  // Prepare chart data - group entries by hour
+  const hourlyData = useMemo(() => {
+    const grouped = new Map<string, { voids: number; leakages: number; intake: number; totalVolume: number; voidCount: number; timestamp: Date }>();
     
     recentEntries.forEach(entry => {
-      const dateKey = entry.date;
-      const current = grouped.get(dateKey) || { voids: 0, leakages: 0, intake: 0, avgVolume: 0, totalVolume: 0, voidCount: 0 };
+      // Create a datetime from date and time
+      const dateTime = new Date(`${entry.date}T${entry.time}`);
+      // Round to the hour
+      const hourKey = format(dateTime, 'yyyy-MM-dd HH:00');
+      const current = grouped.get(hourKey) || { voids: 0, leakages: 0, intake: 0, totalVolume: 0, voidCount: 0, timestamp: dateTime };
       
       if (entry.event_type === 'void') {
         current.voids++;
@@ -56,13 +59,13 @@ export function Dashboard() {
         current.intake += (entry.volume_ml || 0) / 1000; // Convert to liters
       }
       
-      grouped.set(dateKey, current);
+      grouped.set(hourKey, current);
     });
 
     return Array.from(grouped.entries())
-      .map(([date, data]) => ({
-        date: format(parseISO(date), 'EEE'),
-        fullDate: format(parseISO(date), 'MMM d'),
+      .map(([hourKey, data]) => ({
+        hour: format(new Date(hourKey), 'HH:mm'),
+        fullDate: format(new Date(hourKey), 'MMM d, HH:mm'),
         voids: data.voids,
         leakages: data.leakages,
         intake: Math.round(data.intake * 10) / 10,
@@ -165,14 +168,14 @@ export function Dashboard() {
       {/* Quick stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Voids (48h)"
+          title="Total Voids"
           value={stats.totalVoids}
           subtitle={`~${stats.avgVoidsPerDay}/day`}
           icon={Droplets}
           variant="primary"
         />
         <StatCard
-          title="Total Intake (48h)"
+          title="Total Intake"
           value={`${(stats.totalIntake / 1000).toFixed(1)}L`}
           subtitle="48-hour period"
           icon={GlassWater}
@@ -195,23 +198,23 @@ export function Dashboard() {
       </div>
 
       {/* Charts section */}
-      {dailyData.length > 0 && (
+      {hourlyData.length > 0 && (
         <div className="grid lg:grid-cols-2 gap-6">
-          {/* Daily voids chart */}
+          {/* Hourly voids chart */}
           <Card variant="elevated" className="animate-fade-in">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5 text-primary" />
-                Daily Voiding Pattern
+                Hourly Voiding Pattern
               </CardTitle>
               <CardDescription>
-                Number of bathroom trips per day
+                Number of bathroom trips per hour
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dailyData}>
+                  <AreaChart data={hourlyData}>
                     <defs>
                       <linearGradient id="voidGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -220,7 +223,7 @@ export function Dashboard() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
-                      dataKey="date" 
+                      dataKey="hour" 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
                     />
@@ -259,16 +262,16 @@ export function Dashboard() {
                 Fluid Intake
               </CardTitle>
               <CardDescription>
-                Daily fluid consumption in liters
+                Hourly fluid consumption in liters
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-64">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={dailyData}>
+                  <BarChart data={hourlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                     <XAxis 
-                      dataKey="date" 
+                      dataKey="hour" 
                       stroke="hsl(var(--muted-foreground))"
                       fontSize={12}
                     />
