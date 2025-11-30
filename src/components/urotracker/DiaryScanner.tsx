@@ -42,6 +42,8 @@ interface ParsedData {
   rawText?: string;
   parsingNotes?: string;
   overallConfidence: 'high' | 'medium' | 'low';
+  detectedLanguage?: 'en' | 'sv' | string;
+  warning?: string;
 }
 
 export function DiaryScanner() {
@@ -240,6 +242,23 @@ export function DiaryScanner() {
           {getConfidenceBadge(parsedData.overallConfidence)}
         </div>
 
+        {/* Language detection badge */}
+        {parsedData.detectedLanguage && (
+          <Badge variant="outline" className="w-fit">
+            {parsedData.detectedLanguage === 'sv' ? '🇸🇪 Swedish detected' : '🇬🇧 English detected'}
+          </Badge>
+        )}
+
+        {/* Warning for low confidence Swedish parsing */}
+        {parsedData.warning && (
+          <Card variant="warm" className="border-warning/30">
+            <CardContent className="p-4 flex gap-3">
+              <AlertCircle className="h-5 w-5 text-warning-foreground flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-muted-foreground">{parsedData.warning}</p>
+            </CardContent>
+          </Card>
+        )}
+
         {parsedData.parsingNotes && (
           <Card variant="warm" className="border-warning/30">
             <CardContent className="p-4 flex gap-3">
@@ -418,6 +437,7 @@ export function DiaryScanner() {
                 <li>• Keep the page flat and fill the frame</li>
                 <li>• Make sure text is clearly visible and in focus</li>
                 <li>• You can upload multiple pages at once</li>
+                <li>• <span className="font-medium">🇸🇪 Swedish and 🇬🇧 English diaries supported</span></li>
               </ul>
             </div>
           </div>
