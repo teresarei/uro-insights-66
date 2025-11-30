@@ -503,35 +503,6 @@ export function generateDoctorSummaryPDF(options: DoctorExportOptions): void {
 
   yPos += 45;
 
-  // ========== DATA QUALITY SECTION ==========
-  doc.setFontSize(12);
-  doc.setTextColor(...PRIMARY_COLOR);
-  doc.text('Datakvalitet', 14, yPos);
-  yPos += 8;
-
-  // Validation status box
-  const statusColor = validation.meets48hRequirement ? [220, 252, 231] : [254, 243, 199];
-  doc.setFillColor(...(statusColor as [number, number, number]));
-  doc.roundedRect(14, yPos, pageWidth - 28, 25, 2, 2, 'F');
-  
-  doc.setFontSize(10);
-  doc.setTextColor(40);
-  doc.text(
-    validation.meets48hRequirement 
-      ? '✓ Tillräcklig data för diagnostisk utvärdering (≥48 timmar)' 
-      : '⚠ Otillräcklig data för fullständig diagnostik',
-    20, yPos + 10
-  );
-  
-  doc.setFontSize(9);
-  doc.setTextColor(80);
-  doc.text(
-    `Loggade timmar: ${validation.loggedHours}h | Unika dagar: ${validation.uniqueCalendarDays} | Kompletteringsgrad: ${Math.round(validation.completionPercentage)}%`,
-    20, yPos + 18
-  );
-
-  yPos += 35;
-
   // ========== SUMMARY STATISTICS ==========
   doc.setFontSize(12);
   doc.setTextColor(...PRIMARY_COLOR);
@@ -698,17 +669,6 @@ export function generateDoctorSummaryPDF(options: DoctorExportOptions): void {
     doc.text('Ingen behandlingsplan har registrerats.', 14, yPos);
     yPos += 10;
   }
-
-  // ========== GUIDELINE REFERENCE ==========
-  yPos = checkNewPage(doc, yPos, 30);
-  yPos += 5;
-  
-  doc.setFillColor(240, 248, 255);
-  doc.roundedRect(14, yPos, pageWidth - 28, 15, 2, 2, 'F');
-  doc.setFontSize(8);
-  doc.setTextColor(60);
-  doc.text('Riktlinjereferens: EAU Guidelines on Urinary Incontinence (2023)', 20, yPos + 6);
-  doc.text('Diagnostiska mönster och rekommendationer baserade på kliniska riktlinjer.', 20, yPos + 11);
 
   // ========== FOOTER ==========
   const pageCount = doc.getNumberOfPages();
