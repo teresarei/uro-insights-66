@@ -35,6 +35,24 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { sv } from 'date-fns/locale';
 import { getValidationSummary } from '@/utils/recordingValidation';
+import { NocturiaGuidance } from '@/components/urotracker/NocturiaGuidance';
+
+// Helper to determine sex from Swedish personal number (9th digit: odd=male, even=female)
+function getSexFromPersonalNumber(personalNumber: string | undefined): 'male' | 'female' | null {
+  if (!personalNumber) return null;
+  const digits = personalNumber.replace(/\D/g, '');
+  // For 10-digit format (YYMMDD-XXXX), the 9th digit is at index 8
+  // For 12-digit format (YYYYMMDD-XXXX), the 11th digit is the sex indicator
+  let sexDigit: number;
+  if (digits.length === 10) {
+    sexDigit = parseInt(digits[8], 10);
+  } else if (digits.length === 12) {
+    sexDigit = parseInt(digits[10], 10);
+  } else {
+    return null;
+  }
+  return sexDigit % 2 === 1 ? 'male' : 'female';
+}
 
 export function DoctorInsightsView() {
   const { user, selectedPatient } = useAuth();
@@ -361,20 +379,27 @@ export function DoctorInsightsView() {
         ) : (
           patterns.map((pattern, index) => {
             const ProbabilityIcon = probabilityIcons[pattern.probability];
+            const patientSex = getSexFromPersonalNumber(selectedPatient?.personal_number);
+            const isNocturiaPattern = pattern.name === 'Nocturia';
+            const showNocturiaGuidance = isNocturiaPattern && 
+              patientSex === 'male' && 
+              (pattern.probability === 'high' || pattern.probability === 'moderate');
+            
             return (
-              <Card key={index} variant="elevated">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-center gap-2">
-                      <HeartPulse className="h-5 w-5 text-primary" />
-                      <span className="font-semibold">{pattern.name}</span>
+              <div key={index} className="space-y-4">
+                <Card variant="elevated">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-2">
+                        <HeartPulse className="h-5 w-5 text-primary" />
+                        <span className="font-semibold">{pattern.name}</span>
+                      </div>
+                      <Badge variant="outline" className={cn("flex items-center gap-1", probabilityColors[pattern.probability])}>
+                        <ProbabilityIcon className="h-3 w-3" />
+                        {pattern.probability === 'high' ? 'Hög' : pattern.probability === 'moderate' ? 'Måttlig' : 'Låg'}
+                      </Badge>
                     </div>
-                    <Badge variant="outline" className={cn("flex items-center gap-1", probabilityColors[pattern.probability])}>
-                      <ProbabilityIcon className="h-3 w-3" />
-                      {pattern.probability === 'high' ? 'Hög' : pattern.probability === 'moderate' ? 'Måttlig' : 'Låg'}
-                    </Badge>
-                  </div>
-                </CardHeader>
+                  </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground">{pattern.reasoning}</p>
                   <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
@@ -384,7 +409,16 @@ export function DoctorInsightsView() {
                   </div>
                 </CardContent>
               </Card>
-            );
+              
+              {/* Show Nocturia Guidance after the Nocturia pattern card */}
+              {showNocturiaGuidance && (
+                <NocturiaGuidance 
+                  isMalePatient={true}
+                  hasNocturiaDiagnosis={true}
+                />
+              )}
+            </div>
+          );
           })
         )}
       </div>
