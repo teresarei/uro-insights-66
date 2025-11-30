@@ -88,10 +88,45 @@ serve(async (req) => {
       }
     }));
 
-    // More concise prompt to reduce output size
-    const systemPrompt = `Extract bladder diary data from images. Process EACH ROW INDEPENDENTLY.
+    // Bilingual system prompt with Swedish support
+    const systemPrompt = `Extract bladder diary data from images. Support BOTH English and Swedish text. Process EACH ROW INDEPENDENTLY.
 
-COLUMNS: Date, Time, Drink/Intake(ml), Voided Urine(ml), Leakage, Urgency(1-5), Dry pad(g), Wet pad(g), Activity, Notes
+LANGUAGE DETECTION:
+- Automatically detect if text is in English or Swedish
+- Parse Swedish column names and terms using the mapping below
+- If mixed languages appear, process per-row based on context
+
+SWEDISH TO ENGLISH FIELD MAPPINGS:
+| Swedish Term | Interpret As |
+|--------------|--------------|
+| Klockslag, Tid | Time |
+| Mängd | Volume |
+| Dryck, Intag | Intake / Drink |
+| Urinmängd, Urin | Voided volume |
+| Läckage | Leakage |
+| Dagbok | Diary page |
+| Natt | Night |
+| Dag | Day |
+| Torr vikt, Torrvikt | Dry pad weight |
+| Blöt vikt, Våtvikt | Wet pad weight |
+| Kommentar, Anteckning | Comment / Notes |
+| Trängning, Urgency | Urgency |
+| Datum | Date |
+| Volym | Volume |
+| Typ | Type |
+| ml, milliliter | ml |
+| gram, g | grams |
+| Liten | small (leakage) |
+| Medel | medium (leakage) |
+| Stor | large (leakage) |
+| Vatten | Water |
+| Kaffe | Coffee |
+| Te | Tea |
+| Mjölk | Milk |
+| Juice | Juice |
+| Aktivitet | Activity |
+
+COLUMNS (English/Swedish): Date/Datum, Time/Klockslag, Drink/Dryck(ml), Voided/Urin(ml), Leakage/Läckage, Urgency/Trängning(1-5), Dry pad/Torr vikt(g), Wet pad/Blöt vikt(g), Activity/Aktivitet, Notes/Kommentar
 
 RULES:
 - Each row's date/time/weights are independent - never reuse across rows
@@ -99,9 +134,15 @@ RULES:
 - Times: HH:MM (24-hour)
 - Convert volumes to ml
 - If both dry & wet pad weights exist: net = wet - dry
+- For Swedish intake types, translate to English equivalents
 
 OUTPUT (JSON only, no markdown):
-{"voids":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"urgency":null,"notes":null,"confidence":"high"}],"intakes":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"type":null,"notes":null,"confidence":"high"}],"leakages":[{"date":"YYYY-MM-DD","time":"HH:MM","amount":"small","dry_pad_weight_g":null,"wet_pad_weight_g":null,"trigger":null,"notes":null,"confidence":"high"}],"overallConfidence":"high"}
+{"voids":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"urgency":null,"notes":null,"confidence":"high"}],"intakes":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"type":null,"notes":null,"confidence":"high"}],"leakages":[{"date":"YYYY-MM-DD","time":"HH:MM","amount":"small","dry_pad_weight_g":null,"wet_pad_weight_g":null,"trigger":null,"notes":null,"confidence":"high"}],"overallConfidence":"high","detectedLanguage":"en|sv"}
+
+CONFIDENCE LEVELS:
+- "high": Clear text, confident parsing
+- "medium": Some ambiguity but likely correct
+- "low": Swedish terms not fully recognized or handwriting unclear
 
 IMPORTANT: Output ONLY the JSON object. No explanation text. Keep it compact.`;
 
@@ -118,7 +159,7 @@ IMPORTANT: Output ONLY the JSON object. No explanation text. Keep it compact.`;
           { 
             role: 'user', 
             content: [
-              { type: 'text', text: 'Extract all diary entries. Output ONLY valid JSON, no markdown code blocks, no explanation. Be compact.' },
+              { type: 'text', text: 'Extract all diary entries from these images. Support both English and Swedish text. Output ONLY valid JSON, no markdown code blocks, no explanation. Be compact.' },
               ...imageContents
             ]
           }
@@ -139,7 +180,7 @@ IMPORTANT: Output ONLY the JSON object. No explanation text. Keep it compact.`;
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'AI service credits exhausted.' }),
+          JSON.stringify({ error: 'AI service credits exhausted. Please add credits in Settings → Workspace → Usage.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -207,24 +248,39 @@ IMPORTANT: Output ONLY the JSON object. No explanation text. Keep it compact.`;
     parsedData.intakes = parsedData.intakes || [];
     parsedData.leakages = parsedData.leakages || [];
     
-    // Log summary
+    // Log summary with language detection info
+    const detectedLang = parsedData.detectedLanguage || 'unknown';
     console.log('=== PARSED ENTRIES SUMMARY ===');
+    console.log(`Detected Language: ${detectedLang}`);
     console.log(`Voids: ${parsedData.voids.length}`);
     parsedData.voids.forEach((v: any, i: number) => {
-      console.log(`  [${i}] Date: ${v.date}, Time: ${v.time}, Volume: ${v.volume}ml`);
+      console.log(`  [${i}] Date: ${v.date}, Time: ${v.time}, Volume: ${v.volume}ml, Confidence: ${v.confidence || 'unspecified'}`);
     });
     console.log(`Intakes: ${parsedData.intakes.length}`);
     parsedData.intakes.forEach((item: any, idx: number) => {
-      console.log(`  [${idx}] Date: ${item.date}, Time: ${item.time}, Volume: ${item.volume}ml`);
+      console.log(`  [${idx}] Date: ${item.date}, Time: ${item.time}, Volume: ${item.volume}ml, Type: ${item.type || 'none'}, Confidence: ${item.confidence || 'unspecified'}`);
     });
     console.log(`Leakages: ${parsedData.leakages.length}`);
     parsedData.leakages.forEach((l: any, i: number) => {
       const netWeight = (l.dry_pad_weight_g != null && l.wet_pad_weight_g != null) 
         ? (l.wet_pad_weight_g - l.dry_pad_weight_g) 
         : null;
-      console.log(`  [${i}] Date: ${l.date}, Time: ${l.time}, Dry: ${l.dry_pad_weight_g}g, Wet: ${l.wet_pad_weight_g}g, Net: ${netWeight}g`);
+      console.log(`  [${i}] Date: ${l.date}, Time: ${l.time}, Dry: ${l.dry_pad_weight_g}g, Wet: ${l.wet_pad_weight_g}g, Net: ${netWeight}g, Confidence: ${l.confidence || 'unspecified'}`);
     });
     console.log('=== END SUMMARY ===');
+
+    // Check for low confidence entries and add warning
+    const hasLowConfidence = [
+      ...parsedData.voids,
+      ...parsedData.intakes,
+      ...parsedData.leakages
+    ].some((entry: any) => entry.confidence === 'low');
+
+    if (hasLowConfidence || parsedData.overallConfidence === 'low') {
+      parsedData.warning = detectedLang === 'sv' 
+        ? 'Some Swedish terms could not be recognized with high confidence. Please review the parsed fields.'
+        : 'Some terms could not be recognized with high confidence. Please review the parsed fields.';
+    }
     
     return new Response(
       JSON.stringify({ success: true, data: parsedData }),
