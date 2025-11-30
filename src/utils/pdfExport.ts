@@ -12,10 +12,23 @@ interface ExportOptions {
   recordingBlocks?: RecordingBlock[];
 }
 
+interface DailySummary {
+  date: string;
+  totalIntake: number;
+  totalVoided: number;
+  medianVoided: number;
+  minVoided: number | null;
+  maxVoided: number | null;
+  daytimeVoidCount: number;
+  nighttimeVoidCount: number;
+  daytimeVoidedVolume: number;
+  nighttimeVoidedVolume: number;
+  leakageCount: number;
+  totalLeakageWeight: number;
+}
+
 const APP_VERSION = '1.0.0';
 const PRIMARY_COLOR: [number, number, number] = [35, 89, 113];
-const SECONDARY_COLOR: [number, number, number] = [59, 130, 246];
-const WARNING_COLOR: [number, number, number] = [234, 179, 8];
 
 function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -55,8 +68,89 @@ function checkNewPage(doc: jsPDF, yPos: number, minSpace: number = 60): number {
   return yPos;
 }
 
+// Helper to determine if a time is daytime (06:00-22:00) or nighttime
+function isDaytime(timeStr: string): boolean {
+  const [hours] = timeStr.split(':').map(Number);
+  return hours >= 6 && hours < 22;
+}
+
+// Calculate median from array of numbers
+function calculateMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0
+    ? sorted[mid]
+    : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+}
+
+// Group entries by date and compute daily summaries
+function computeDailySummaries(entries: DiaryEntry[]): DailySummary[] {
+  // Group entries by date
+  const byDate: Record<string, DiaryEntry[]> = {};
+  
+  entries.forEach(entry => {
+    if (!byDate[entry.date]) {
+      byDate[entry.date] = [];
+    }
+    byDate[entry.date].push(entry);
+  });
+
+  // Compute summary for each date
+  const summaries: DailySummary[] = Object.keys(byDate)
+    .sort()
+    .map(date => {
+      const dayEntries = byDate[date];
+      
+      // Intakes
+      const intakes = dayEntries.filter(e => e.event_type === 'intake');
+      const totalIntake = intakes.reduce((sum, e) => sum + (e.volume_ml || 0), 0);
+      
+      // Voids
+      const voids = dayEntries.filter(e => e.event_type === 'void');
+      const voidVolumes = voids.map(v => v.volume_ml || 0).filter(v => v > 0);
+      const totalVoided = voidVolumes.reduce((sum, v) => sum + v, 0);
+      const medianVoided = calculateMedian(voidVolumes);
+      const minVoided = voidVolumes.length > 0 ? Math.min(...voidVolumes) : null;
+      const maxVoided = voidVolumes.length > 0 ? Math.max(...voidVolumes) : null;
+      
+      // Day/Night void breakdown
+      const daytimeVoids = voids.filter(v => isDaytime(v.time));
+      const nighttimeVoids = voids.filter(v => !isDaytime(v.time));
+      const daytimeVoidCount = daytimeVoids.length;
+      const nighttimeVoidCount = nighttimeVoids.length;
+      const daytimeVoidedVolume = daytimeVoids.reduce((sum, v) => sum + (v.volume_ml || 0), 0);
+      const nighttimeVoidedVolume = nighttimeVoids.reduce((sum, v) => sum + (v.volume_ml || 0), 0);
+      
+      // Leakages
+      const leakages = dayEntries.filter(e => e.event_type === 'leakage');
+      const leakageCount = leakages.length;
+      // Only sum leakage_weight_g where both pad weights were provided
+      const totalLeakageWeight = leakages
+        .filter(l => l.leakage_weight_g !== null && l.leakage_weight_g !== undefined)
+        .reduce((sum, l) => sum + (l.leakage_weight_g || 0), 0);
+      
+      return {
+        date,
+        totalIntake,
+        totalVoided,
+        medianVoided,
+        minVoided,
+        maxVoided,
+        daytimeVoidCount,
+        nighttimeVoidCount,
+        daytimeVoidedVolume,
+        nighttimeVoidedVolume,
+        leakageCount,
+        totalLeakageWeight,
+      };
+    });
+
+  return summaries;
+}
+
 export function generateDiaryPDF(options: ExportOptions): void {
-  const { entries, stats, patientName, dateRange, recordingBlocks } = options;
+  const { entries, patientName, dateRange, recordingBlocks } = options;
   const doc = new jsPDF();
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -95,199 +189,112 @@ export function generateDiaryPDF(options: ExportOptions): void {
 
   yPos += 38;
 
-  // ========== SECTION B: DASHBOARD SUMMARY ==========
-  doc.setFontSize(14);
-  doc.setTextColor(...PRIMARY_COLOR);
-  doc.text('Dashboard Summary', 14, yPos);
+  // ========== SECTION B: DAILY SUMMARY STATISTICS ==========
+  const dailySummaries = computeDailySummaries(entries);
   
-  yPos += 3;
-
-  // Primary stats table
-  const primaryStatsData = [
-    ['Total Voids', stats.totalVoids.toString(), 'Day Voids', stats.dayVoids.toString()],
-    ['Total Leakages', stats.totalLeakages.toString(), 'Night Voids', stats.nightVoids.toString()],
-    ['Total Intake', `${(stats.totalIntake / 1000).toFixed(2)} L`, 'Avg Voids/Day', stats.avgVoidsPerDay.toFixed(1)],
-    ['Median Volume', `${stats.medianVolume} ml`, 'Volume Range', `${stats.minVolume}–${stats.maxVolume} ml`],
-  ];
-
-  autoTable(doc, {
-    startY: yPos,
-    head: [],
-    body: primaryStatsData,
-    theme: 'plain',
-    styles: {
-      fontSize: 10,
-      cellPadding: 4,
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 42 },
-      1: { cellWidth: 38 },
-      2: { fontStyle: 'bold', cellWidth: 42 },
-      3: { cellWidth: 38 },
-    },
-  });
-
-  yPos = (doc as any).lastAutoTable.finalY + 8;
-
-  // Day vs Night breakdown
-  const totalVoided = stats.dayVoids + stats.nightVoids > 0 
-    ? ((stats.dayVoids / (stats.dayVoids + stats.nightVoids)) * 100).toFixed(0)
-    : '0';
-    
-  doc.setFontSize(10);
-  doc.setTextColor(60);
-  doc.text(`Day/Night Distribution: ${totalVoided}% daytime, ${100 - parseInt(totalVoided)}% nighttime`, 14, yPos);
-  
-  yPos += 12;
-
-  // ========== VOID EVENTS TABLE ==========
-  const voids = entries.filter(e => e.event_type === 'void');
-  if (voids.length > 0) {
-    yPos = checkNewPage(doc, yPos);
-    
-    doc.setFontSize(13);
+  if (dailySummaries.length > 0) {
+    doc.setFontSize(14);
     doc.setTextColor(...PRIMARY_COLOR);
-    doc.text('Void Events', 14, yPos);
-    
-    yPos += 4;
+    doc.text('Daily Summary Statistics', 14, yPos);
+    yPos += 10;
 
-    // Check if any voids use catheter to decide column layout
-    const hasCatheterVoids = voids.some(v => (v as any).uses_catheter);
+    dailySummaries.forEach((day, index) => {
+      yPos = checkNewPage(doc, yPos, 70);
 
-    const voidData = voids.map(v => {
-      const entry = v as any;
-      const baseRow = [
-        format(parseISO(v.date), 'MMM d'),
-        v.time.slice(0, 5),
-        `${v.volume_ml || '-'} ml`,
-        v.urgency ? `${v.urgency}/5` : '-',
-      ];
+      // Date header
+      doc.setFillColor(240, 245, 250);
+      doc.roundedRect(14, yPos, pageWidth - 28, 10, 2, 2, 'F');
+      doc.setFontSize(11);
+      doc.setTextColor(40);
+      doc.text(format(parseISO(day.date), 'EEEE, MMMM d, yyyy'), 20, yPos + 7);
+      yPos += 14;
+
+      // Summary data in two columns
+      const leftCol = 20;
+      const rightCol = pageWidth / 2 + 10;
+      const lineHeight = 5.5;
+
+      doc.setFontSize(9);
+      doc.setTextColor(60);
+
+      // Left column
+      doc.text(`Total fluid intake:`, leftCol, yPos);
+      doc.setTextColor(30);
+      doc.text(`${day.totalIntake} mL`, leftCol + 45, yPos);
       
-      if (hasCatheterVoids) {
-        // Add catheter columns
-        const catheterInfo = entry.uses_catheter 
-          ? `W:${entry.volume_with_catheter_ml || '-'} / WO:${entry.volume_without_catheter_ml || '-'}`
-          : '-';
-        baseRow.push(catheterInfo);
+      doc.setTextColor(60);
+      doc.text(`Total voided volume:`, leftCol, yPos + lineHeight);
+      doc.setTextColor(30);
+      doc.text(`${day.totalVoided} mL`, leftCol + 45, yPos + lineHeight);
+      
+      doc.setTextColor(60);
+      doc.text(`Median void volume:`, leftCol, yPos + lineHeight * 2);
+      doc.setTextColor(30);
+      doc.text(`${day.medianVoided} mL`, leftCol + 45, yPos + lineHeight * 2);
+      
+      doc.setTextColor(60);
+      doc.text(`Void volume range:`, leftCol, yPos + lineHeight * 3);
+      doc.setTextColor(30);
+      const rangeText = day.minVoided !== null && day.maxVoided !== null
+        ? `${day.minVoided} – ${day.maxVoided} mL`
+        : '–';
+      doc.text(rangeText, leftCol + 45, yPos + lineHeight * 3);
+
+      doc.setTextColor(60);
+      doc.text(`Leakage events:`, leftCol, yPos + lineHeight * 4);
+      doc.setTextColor(30);
+      doc.text(`${day.leakageCount}`, leftCol + 45, yPos + lineHeight * 4);
+
+      // Right column
+      doc.setTextColor(60);
+      doc.text(`Voids daytime (06-22):`, rightCol, yPos);
+      doc.setTextColor(30);
+      doc.text(`${day.daytimeVoidCount}`, rightCol + 50, yPos);
+      
+      doc.setTextColor(60);
+      doc.text(`Voids nighttime (22-06):`, rightCol, yPos + lineHeight);
+      doc.setTextColor(30);
+      doc.text(`${day.nighttimeVoidCount}`, rightCol + 50, yPos + lineHeight);
+      
+      doc.setTextColor(60);
+      doc.text(`Daytime voided volume:`, rightCol, yPos + lineHeight * 2);
+      doc.setTextColor(30);
+      doc.text(`${day.daytimeVoidedVolume} mL`, rightCol + 50, yPos + lineHeight * 2);
+      
+      doc.setTextColor(60);
+      doc.text(`Nighttime voided volume:`, rightCol, yPos + lineHeight * 3);
+      doc.setTextColor(30);
+      doc.text(`${day.nighttimeVoidedVolume} mL`, rightCol + 50, yPos + lineHeight * 3);
+
+      doc.setTextColor(60);
+      doc.text(`Total leakage amount:`, rightCol, yPos + lineHeight * 4);
+      doc.setTextColor(30);
+      doc.text(`${day.totalLeakageWeight > 0 ? day.totalLeakageWeight.toFixed(1) + ' g' : '–'}`, rightCol + 50, yPos + lineHeight * 4);
+
+      yPos += lineHeight * 5 + 8;
+
+      // Separator between days (except last)
+      if (index < dailySummaries.length - 1) {
+        doc.setDrawColor(230);
+        doc.line(20, yPos, pageWidth - 20, yPos);
+        yPos += 6;
       }
-      
-      baseRow.push((v.notes || '-').substring(0, 25));
-      return baseRow;
     });
-
-    const headers = hasCatheterVoids 
-      ? [['Date', 'Time', 'Total Vol', 'Urgency', 'Catheter (W/WO)', 'Notes']]
-      : [['Date', 'Time', 'Volume', 'Urgency', 'Notes']];
-
-    autoTable(doc, {
-      startY: yPos,
-      head: headers,
-      body: voidData,
-      theme: 'striped',
-      headStyles: {
-        fillColor: PRIMARY_COLOR,
-        fontSize: 9,
-      },
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-      },
-      columnStyles: hasCatheterVoids 
-        ? { 5: { cellWidth: 35 } }
-        : { 4: { cellWidth: 50 } },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
-
-  // ========== FLUID INTAKE TABLE ==========
-  const intakes = entries.filter(e => e.event_type === 'intake');
-  if (intakes.length > 0) {
-    yPos = checkNewPage(doc, yPos);
-    
-    doc.setFontSize(13);
-    doc.setTextColor(...SECONDARY_COLOR);
-    doc.text('Fluid Intake', 14, yPos);
-    
-    yPos += 4;
-
-    const intakeData = intakes.map(i => [
-      format(parseISO(i.date), 'MMM d'),
-      i.time.slice(0, 5),
-      `${i.volume_ml || '-'} ml`,
-      i.intake_type || '-',
-      (i.notes || '-').substring(0, 30),
-    ]);
-
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Date', 'Time', 'Volume', 'Type', 'Notes']],
-      body: intakeData,
-      theme: 'striped',
-      headStyles: {
-        fillColor: SECONDARY_COLOR,
-        fontSize: 9,
-      },
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-      },
-      columnStyles: {
-        4: { cellWidth: 50 },
-      },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 10;
-  }
-
-  // ========== LEAKAGE EVENTS TABLE ==========
-  const leakages = entries.filter(e => e.event_type === 'leakage');
-  if (leakages.length > 0) {
-    yPos = checkNewPage(doc, yPos);
-    
-    doc.setFontSize(13);
-    doc.setTextColor(...WARNING_COLOR);
-    doc.text('Leakage Events', 14, yPos);
-    
-    yPos += 4;
-
-    const leakageData = leakages.map(l => [
-      format(parseISO(l.date), 'MMM d'),
-      l.time.slice(0, 5),
-      l.leakage_severity || '-',
-      l.leakage_weight_g ? `${l.leakage_weight_g}g` : '-',
-      l.trigger || '-',
-      (l.notes || '-').substring(0, 25),
-    ]);
-
-    autoTable(doc, {
-      startY: yPos,
-      head: [['Date', 'Time', 'Severity', 'Weight', 'Trigger', 'Notes']],
-      body: leakageData,
-      theme: 'striped',
-      headStyles: {
-        fillColor: WARNING_COLOR,
-        textColor: [30, 30, 30],
-        fontSize: 9,
-      },
-      styles: {
-        fontSize: 8,
-        cellPadding: 3,
-      },
-      columnStyles: {
-        5: { cellWidth: 40 },
-      },
-    });
-
-    yPos = (doc as any).lastAutoTable.finalY + 10;
+  } else {
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text('No entries recorded for the selected timeframe.', 14, yPos);
+    yPos += 15;
   }
 
   // ========== SECTION C: DIAGNOSTIC ASSESSMENT ==========
   if (recordingBlocks && recordingBlocks.length > 0) {
-    doc.addPage();
-    yPos = 20;
+    yPos = checkNewPage(doc, yPos, 80);
+    
+    // Add some spacing before diagnostics
+    yPos += 10;
 
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setTextColor(...PRIMARY_COLOR);
     doc.text('Diagnostic Assessment', 14, yPos);
     
@@ -301,24 +308,22 @@ export function generateDiaryPDF(options: ExportOptions): void {
       const endDate = format(new Date(block.end_datetime), 'MMM d, yyyy');
       
       doc.setFillColor(240, 245, 250);
-      doc.roundedRect(14, yPos, pageWidth - 28, 18, 2, 2, 'F');
+      doc.roundedRect(14, yPos, pageWidth - 28, 12, 2, 2, 'F');
       
-      doc.setFontSize(11);
+      doc.setFontSize(10);
       doc.setTextColor(40);
-      doc.text(`Recording Block ${blockIndex + 1}: ${startDate} – ${endDate}`, 20, yPos + 7);
+      doc.text(`Recording Block ${blockIndex + 1}: ${startDate} – ${endDate}`, 20, yPos + 8);
       
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(100);
       const statusText = block.status === 'complete' ? '✓ Complete (72h)' : '⚠ Incomplete';
-      doc.text(statusText, pageWidth - 20, yPos + 7, { align: 'right' });
+      doc.text(statusText, pageWidth - 20, yPos + 8, { align: 'right' });
       
-      doc.text(`Voids: ${block.void_count} | Intake: ${block.total_intake_ml}ml | Leakages: ${block.leakage_count}`, 20, yPos + 14);
-      
-      yPos += 24;
+      yPos += 18;
 
       // Clinical Patterns
       if (block.clinical_patterns && block.clinical_patterns.length > 0) {
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setTextColor(...PRIMARY_COLOR);
         doc.text('Clinical Patterns (Probability-Ranked):', 14, yPos);
         yPos += 6;
@@ -330,13 +335,13 @@ export function generateDiaryPDF(options: ExportOptions): void {
           return [
             `${idx + 1}. ${pattern.name}`,
             probLabel,
-            pattern.reasoning.substring(0, 60) + (pattern.reasoning.length > 60 ? '...' : ''),
+            pattern.reasoning.substring(0, 70) + (pattern.reasoning.length > 70 ? '...' : ''),
           ];
         });
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Pattern', 'Probability', 'Reasoning']],
+          head: [['Pattern', 'Prob.', 'Reasoning']],
           body: patternData,
           theme: 'plain',
           headStyles: {
@@ -346,12 +351,12 @@ export function generateDiaryPDF(options: ExportOptions): void {
           },
           styles: {
             fontSize: 8,
-            cellPadding: 3,
+            cellPadding: 2,
           },
           columnStyles: {
-            0: { cellWidth: 45 },
-            1: { cellWidth: 25 },
-            2: { cellWidth: 100 },
+            0: { cellWidth: 40 },
+            1: { cellWidth: 18 },
+            2: { cellWidth: 115 },
           },
         });
 
@@ -360,7 +365,7 @@ export function generateDiaryPDF(options: ExportOptions): void {
 
       // Overall Assessment
       if (block.overall_assessment) {
-        yPos = checkNewPage(doc, yPos, 40);
+        yPos = checkNewPage(doc, yPos, 35);
         doc.setFontSize(9);
         doc.setTextColor(60);
         doc.text('Overall Assessment:', 14, yPos);
@@ -369,33 +374,34 @@ export function generateDiaryPDF(options: ExportOptions): void {
         const assessmentLines = doc.splitTextToSize(block.overall_assessment, pageWidth - 32);
         doc.setFontSize(9);
         doc.setTextColor(40);
-        doc.text(assessmentLines, 14, yPos);
-        yPos += assessmentLines.length * 4 + 6;
+        doc.text(assessmentLines.slice(0, 5), 14, yPos);
+        yPos += Math.min(assessmentLines.length, 5) * 4 + 4;
       }
 
       // Guideline Reference
       const guidelineUrl = getGuidelineUrl(block.clinical_patterns || []);
       doc.setFontSize(8);
       doc.setTextColor(59, 130, 246);
-      doc.textWithLink('📖 EAU Guideline Reference', 14, yPos, { url: guidelineUrl });
+      doc.textWithLink('EAU Guideline Reference', 14, yPos, { url: guidelineUrl });
       yPos += 8;
 
       // ========== SECTION D: TREATMENT PLAN ==========
-      yPos = checkNewPage(doc, yPos, 50);
+      yPos = checkNewPage(doc, yPos, 45);
       
-      doc.setFontSize(10);
+      doc.setFontSize(9);
       doc.setTextColor(...PRIMARY_COLOR);
       doc.text('Treatment Plan:', 14, yPos);
-      yPos += 6;
+      yPos += 5;
 
       if (block.treatment_plan) {
         doc.setFillColor(252, 252, 250);
-        doc.roundedRect(14, yPos, pageWidth - 28, 40, 2, 2, 'F');
-        
         const planLines = doc.splitTextToSize(block.treatment_plan, pageWidth - 36);
-        doc.setFontSize(9);
+        const boxHeight = Math.min(planLines.length, 6) * 4 + 12;
+        doc.roundedRect(14, yPos, pageWidth - 28, boxHeight, 2, 2, 'F');
+        
+        doc.setFontSize(8);
         doc.setTextColor(40);
-        doc.text(planLines.slice(0, 8), 18, yPos + 6);
+        doc.text(planLines.slice(0, 6), 18, yPos + 5);
         
         if (block.treatment_plan_updated_at) {
           doc.setFontSize(7);
@@ -403,25 +409,23 @@ export function generateDiaryPDF(options: ExportOptions): void {
           doc.text(
             `Last updated: ${format(new Date(block.treatment_plan_updated_at), 'MMM d, yyyy HH:mm')}`,
             18,
-            yPos + 36
+            yPos + boxHeight - 4
           );
         }
-        yPos += 48;
+        yPos += boxHeight + 6;
       } else {
-        doc.setFontSize(9);
+        doc.setFontSize(8);
         doc.setTextColor(120);
-        doc.setFillColor(250, 250, 250);
-        doc.roundedRect(14, yPos, pageWidth - 28, 14, 2, 2, 'F');
-        doc.text('No treatment plan added for this recording.', 18, yPos + 9);
-        yPos += 22;
+        doc.text('No treatment plan added for this recording.', 14, yPos);
+        yPos += 10;
       }
 
       // Separator between blocks
       if (blockIndex < recordingBlocks.length - 1) {
-        yPos += 5;
+        yPos += 4;
         doc.setDrawColor(220);
         doc.line(14, yPos, pageWidth - 14, yPos);
-        yPos += 10;
+        yPos += 8;
       }
     });
   }
