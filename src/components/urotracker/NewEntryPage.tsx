@@ -94,7 +94,7 @@ export function NewEntryPage() {
           {/* Step 2: Entry method selector */}
           <div className="flex gap-2 p-1 bg-muted rounded-xl">
             <Button
-              variant={method === 'manual' ? 'default' : 'ghost'}
+              variant={method === 'manual' ? 'default1' : 'ghost'}
               className={cn(
                 "flex-1 gap-2 h-12 rounded-lg transition-all",
                 method === 'manual' && "shadow-soft bg-card"
@@ -105,7 +105,7 @@ export function NewEntryPage() {
               Manual Entry
             </Button>
             <Button
-              variant={method === 'scan' ? 'default' : 'ghost'}
+              variant={method === 'scan' ? 'default1' : 'ghost'}
               className={cn(
                 "flex-1 gap-2 h-12 rounded-lg transition-all",
                 method === 'scan' && "shadow-soft bg-card"
