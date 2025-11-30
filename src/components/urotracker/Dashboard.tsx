@@ -300,29 +300,6 @@ export function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Leakage weight highlight */}
-          {stats.totalLeakageWeight > 0 && (
-            <Card variant="elevated" className="border-warning-foreground/30 bg-warning-soft/30">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-warning-soft">
-                      <Scale className="h-6 w-6 text-warning-foreground" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total leakage weight</p>
-                      <p className="text-3xl font-bold text-foreground">{stats.totalLeakageWeight}g</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Based on pad weights</p>
-                    <p className="text-sm font-medium text-foreground">{stats.totalLeakages} events</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Quick stats grid */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <StatCard
@@ -349,10 +326,19 @@ export function Dashboard() {
             <StatCard
               title="Leakage Events"
               value={stats.totalLeakages}
-              subtitle={stats.totalLeakages > 0 ? `~${stats.avgLeakagesPerDay}/day` : 'None recorded'}
+              subtitle={stats.totalLeakages > 0 ? `~${stats.totalLeakages}/day` : 'None recorded'}
               icon={AlertCircle}
               variant={stats.totalLeakages > 0 ? 'warning' : 'default'}
             />
+            {stats.totalLeakageWeight > 0 && (
+            <StatCard
+              title="Total leakage weight"
+              value={stats.totalLeakageWeight}
+              subtitle={stats.totalLeakageWeight > 0 ? `${stats.totalLeakages} events` : 'None recorded'}
+              icon={Scale}
+              variant={stats.totalLeakageWeight > 100 ? 'warning' : 'success'}
+            />
+            )}
           </div>
 
           {/* Charts section */}
