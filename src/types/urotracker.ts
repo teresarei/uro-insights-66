@@ -81,6 +81,11 @@ export interface RecordingBlock {
   treatment_plan_updated_at: string | null;
   created_at: string;
   updated_at: string;
+  // Validation fields
+  logged_hours?: number;
+  unique_calendar_days?: number;
+  meets_48h_requirement?: boolean;
+  completion_percentage?: number;
 }
 
 export type ViewType = 'welcome' | 'dashboard' | 'entry' | 'insights' | 'profile' | 'overview';
