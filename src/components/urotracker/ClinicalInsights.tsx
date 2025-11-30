@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ClinicalPattern } from '@/types/urotracker';
 import { cn } from '@/lib/utils';
+import { NocturiaGuidance } from './NocturiaGuidance';
 
 export function ClinicalInsights() {
   const { entries, getStats, userProfile, setCurrentView, getEntriesLast48Hours } = useDiary();
@@ -206,6 +207,12 @@ export function ClinicalInsights() {
           );
         })}
       </div>
+
+      {/* Nocturia Guidance for Male Patients */}
+      <NocturiaGuidance 
+        isMalePatient={userProfile.sex === 'male'}
+        hasNocturiaDiagnosis={patterns.some(p => p.name === 'Nocturia' && (p.probability === 'high' || p.probability === 'moderate'))}
+      />
 
       {/* Treatment Plan Notice for Patients */}
       {isPatient && (
