@@ -325,23 +325,19 @@ export function generateDiaryPDF(options: ExportOptions): void {
       if (block.clinical_patterns && block.clinical_patterns.length > 0) {
         doc.setFontSize(9);
         doc.setTextColor(...PRIMARY_COLOR);
-        doc.text('Clinical Patterns (Probability-Ranked):', 14, yPos);
+        doc.text('Clinical Patterns:', 14, yPos);
         yPos += 6;
 
         const patternData = block.clinical_patterns.map((pattern: ClinicalPattern, idx: number) => {
-          const probLabel = pattern.probability === 'high' ? '●●●' 
-            : pattern.probability === 'moderate' ? '●●○' 
-            : '●○○';
           return [
             `${idx + 1}. ${pattern.name}`,
-            probLabel,
-            pattern.reasoning.substring(0, 70) + (pattern.reasoning.length > 70 ? '...' : ''),
+            pattern.reasoning.substring(0, 90) + (pattern.reasoning.length > 90 ? '...' : ''),
           ];
         });
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Pattern', 'Prob.', 'Reasoning']],
+          head: [['Pattern', 'Reasoning']],
           body: patternData,
           theme: 'plain',
           headStyles: {
@@ -354,9 +350,8 @@ export function generateDiaryPDF(options: ExportOptions): void {
             cellPadding: 2,
           },
           columnStyles: {
-            0: { cellWidth: 40 },
-            1: { cellWidth: 18 },
-            2: { cellWidth: 115 },
+            0: { cellWidth: 45 },
+            1: { cellWidth: 128 },
           },
         });
 
@@ -377,13 +372,6 @@ export function generateDiaryPDF(options: ExportOptions): void {
         doc.text(assessmentLines.slice(0, 5), 14, yPos);
         yPos += Math.min(assessmentLines.length, 5) * 4 + 4;
       }
-
-      // Guideline Reference
-      const guidelineUrl = getGuidelineUrl(block.clinical_patterns || []);
-      doc.setFontSize(8);
-      doc.setTextColor(59, 130, 246);
-      doc.textWithLink('EAU Guideline Reference', 14, yPos, { url: guidelineUrl });
-      yPos += 8;
 
       // ========== SECTION D: TREATMENT PLAN ==========
       yPos = checkNewPage(doc, yPos, 45);
@@ -440,30 +428,4 @@ export function generateDiaryPDF(options: ExportOptions): void {
   // Save the PDF
   const fileName = `Voida_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
   doc.save(fileName);
-}
-
-function getGuidelineUrl(patterns: ClinicalPattern[]): string {
-  const hasOAB = patterns.some(p => 
-    p.name.toLowerCase().includes('overactive') || 
-    p.name.toLowerCase().includes('oab')
-  );
-  const hasNocturia = patterns.some(p => 
-    p.name.toLowerCase().includes('nocturia') || 
-    p.name.toLowerCase().includes('nocturnal polyuria')
-  );
-  const hasStress = patterns.some(p => 
-    p.name.toLowerCase().includes('stress')
-  );
-  
-  if (hasOAB) {
-    return 'https://uroweb.org/guidelines/non-neurogenic-female-luts';
-  }
-  if (hasNocturia) {
-    return 'https://uroweb.org/guidelines/non-neurogenic-male-luts';
-  }
-  if (hasStress) {
-    return 'https://uroweb.org/guidelines/urinary-incontinence';
-  }
-  
-  return 'https://uroweb.org/guidelines/non-neurogenic-female-luts';
 }
