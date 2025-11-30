@@ -356,7 +356,7 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
             {stats.totalLeakageWeight > 0 && (
             <StatCard
               title="Leakage weight"
-              value={stats.totalLeakageWeight}
+              value={`${stats.totalLeakageWeight}g`}
               subtitle={`${stats.totalLeakages} events`}
               icon={Scale}
               variant={stats.totalLeakageWeight > 100 ? 'warning' : 'success'}
