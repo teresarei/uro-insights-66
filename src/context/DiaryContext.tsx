@@ -18,7 +18,18 @@ interface DiaryContextType {
   error: string | null;
   
   // Entry operations
-  addVoidEntry: (data: { time: string; volume: number; urgency?: number; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low' }) => Promise<void>;
+  addVoidEntry: (data: { 
+    time: string; 
+    volume: number; 
+    urgency?: number; 
+    notes?: string; 
+    date?: string; 
+    source?: 'manual' | 'scan'; 
+    confidence?: 'high' | 'medium' | 'low';
+    usesCatheter?: boolean;
+    volumeWithCatheter?: number;
+    volumeWithoutCatheter?: number;
+  }) => Promise<void>;
   addIntakeEntry: (data: { time: string; volume: number; type?: string; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low' }) => Promise<void>;
   addLeakageEntry: (data: { time: string; amount?: 'small' | 'medium' | 'large'; trigger?: string; notes?: string; date?: string; source?: 'manual' | 'scan'; confidence?: 'high' | 'medium' | 'low'; dryPadWeight?: number; wetPadWeight?: number }) => Promise<void>;
   addMultipleEntries: (entries: DiaryEntryInsert[]) => Promise<DiaryEntry[]>;
@@ -56,6 +67,9 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
     date?: string;
     source?: 'manual' | 'scan';
     confidence?: 'high' | 'medium' | 'low';
+    usesCatheter?: boolean;
+    volumeWithCatheter?: number;
+    volumeWithoutCatheter?: number;
   }) => {
     const today = data.date || new Date().toISOString().split('T')[0];
     await addEntry({
@@ -67,6 +81,9 @@ export function DiaryProvider({ children }: { children: ReactNode }) {
       notes: data.notes || null,
       source: data.source || 'manual',
       confidence: data.confidence || null,
+      uses_catheter: data.usesCatheter || false,
+      volume_with_catheter_ml: data.volumeWithCatheter || null,
+      volume_without_catheter_ml: data.volumeWithoutCatheter || null,
     });
   };
 
