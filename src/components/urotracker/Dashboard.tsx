@@ -333,7 +333,7 @@ export function Dashboard() {
             {stats.totalLeakageWeight > 0 && (
             <StatCard
               title="Total leakage weight"
-              value={stats.totalLeakageWeight}
+              value={`${stats.totalLeakageWeight}g`}
               subtitle={stats.totalLeakageWeight > 0 ? `${stats.totalLeakages} events` : 'None recorded'}
               icon={Scale}
               variant={stats.totalLeakageWeight > 100 ? 'warning' : 'success'}
