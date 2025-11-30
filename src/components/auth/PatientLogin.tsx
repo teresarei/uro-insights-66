@@ -4,13 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Smartphone, Shield, CheckCircle2, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Loader2, Smartphone, Shield, CheckCircle2, AlertCircle, ArrowLeft } from 'lucide-react';
 
 type AuthStep = 'input' | 'waiting' | 'success' | 'error';
 
-export function BankIDLogin() {
-  const { login, isAuthenticating } = useAuth();
+interface PatientLoginProps {
+  onBack: () => void;
+}
+
+export function PatientLogin({ onBack }: PatientLoginProps) {
+  const { loginAsPatient, isAuthenticating } = useAuth();
   const [personalNumber, setPersonalNumber] = useState('');
   const [step, setStep] = useState<AuthStep>('input');
   const [error, setError] = useState('');
@@ -32,7 +35,7 @@ export function BankIDLogin() {
     setStep('waiting');
     
     try {
-      await login(personalNumber);
+      await loginAsPatient(personalNumber);
       setStep('success');
     } catch (err) {
       setStep('error');
@@ -52,6 +55,12 @@ export function BankIDLogin() {
   return (
     <div className="min-h-screen bg-background gradient-surface flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6 animate-slide-up">
+        {/* Back button */}
+        <Button variant="ghost" onClick={onBack} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Tillbaka
+        </Button>
+
         {/* BankID Logo/Header */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
@@ -66,7 +75,7 @@ export function BankIDLogin() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">BankID</h1>
-            <p className="text-sm text-muted-foreground">Säker inloggning till UroTracker</p>
+            <p className="text-sm text-muted-foreground">Säker inloggning för patienter</p>
           </div>
         </div>
 
@@ -109,7 +118,7 @@ export function BankIDLogin() {
                   </Button>
 
                   <p className="text-xs text-center text-muted-foreground">
-                    Detta är en demo-implementation av BankID för UroTracker
+                    Detta är en demo-implementation av BankID för Void.AI
                   </p>
                 </form>
               </CardContent>
@@ -161,7 +170,7 @@ export function BankIDLogin() {
                   Inloggning lyckades!
                 </h3>
                 <p className="text-muted-foreground">
-                  Du omdirigeras till UroTracker...
+                  Du omdirigeras till Void.AI...
                 </p>
               </div>
             </CardContent>

@@ -92,6 +92,105 @@ export type Database = {
         }
         Relationships: []
       }
+      doctor_patient_assignments: {
+        Row: {
+          assigned_at: string
+          doctor_id: string
+          id: string
+          notes: string | null
+          patient_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          doctor_id: string
+          id?: string
+          notes?: string | null
+          patient_id: string
+        }
+        Update: {
+          assigned_at?: string
+          doctor_id?: string
+          id?: string
+          notes?: string | null
+          patient_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctor_patient_assignments_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "doctor_patient_assignments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctors: {
+        Row: {
+          created_at: string
+          department: string | null
+          display_name: string
+          id: string
+          password_hash: string
+          updated_at: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          department?: string | null
+          display_name: string
+          id?: string
+          password_hash: string
+          updated_at?: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          created_at?: string
+          department?: string | null
+          display_name?: string
+          id?: string
+          password_hash?: string
+          updated_at?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
+      patients: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+          personal_number: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id?: string
+          personal_number: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+          personal_number?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       recording_blocks: {
         Row: {
           clinical_patterns: Json | null
@@ -173,14 +272,97 @@ export type Database = {
         }
         Relationships: []
       }
+      treatment_plans: {
+        Row: {
+          clinician_notes: string | null
+          created_at: string
+          doctor_id: string
+          id: string
+          patient_id: string
+          plan_text: string
+          recording_block_id: string
+          updated_at: string
+        }
+        Insert: {
+          clinician_notes?: string | null
+          created_at?: string
+          doctor_id: string
+          id?: string
+          patient_id: string
+          plan_text: string
+          recording_block_id: string
+          updated_at?: string
+        }
+        Update: {
+          clinician_notes?: string | null
+          created_at?: string
+          doctor_id?: string
+          id?: string
+          patient_id?: string
+          plan_text?: string
+          recording_block_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plans_doctor_id_fkey"
+            columns: ["doctor_id"]
+            isOneToOne: false
+            referencedRelation: "doctors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plans_recording_block_id_fkey"
+            columns: ["recording_block_id"]
+            isOneToOne: false
+            referencedRelation: "recording_blocks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "patient" | "doctor"
       entry_source: "scan" | "manual"
       event_type: "void" | "leakage" | "intake"
       leakage_severity: "small" | "medium" | "large"
@@ -311,6 +493,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["patient", "doctor"],
       entry_source: ["scan", "manual"],
       event_type: ["void", "leakage", "intake"],
       leakage_severity: ["small", "medium", "large"],
