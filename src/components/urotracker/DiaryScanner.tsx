@@ -25,7 +25,7 @@ interface ParsedEntry {
   time: string;
   volume?: number;
   urgency?: number | null;
-  amount?: 'small' | 'medium' | 'large';
+  amount?: 'small' | 'medium' | 'large' | string;
   type?: string | null;
   trigger?: string | null;
   notes?: string | null;
@@ -44,6 +44,59 @@ interface ParsedData {
   overallConfidence: 'high' | 'medium' | 'low';
   detectedLanguage?: 'en' | 'sv' | string;
   warning?: string;
+}
+
+// Normalize leakage severity values from OCR to valid enum values
+function normalizeLeakageSeverity(value: any): 'small' | 'medium' | 'large' | null {
+  if (!value) return null;
+  
+  const str = String(value).toLowerCase().trim();
+  
+  // Valid values
+  if (str === 'small' || str === 'liten') return 'small';
+  if (str === 'medium' || str === 'medel') return 'medium';
+  if (str === 'large' || str === 'stor' || str === 'big') return 'large';
+  
+  // Boolean-like values default to 'small'
+  if (str === 'yes' || str === 'true' || str === 'ja' || str === '1' || str === 'x') return 'small';
+  
+  // If it's a non-empty string we don't recognize, default to 'small'
+  if (str.length > 0 && str !== 'no' && str !== 'false' && str !== 'nej' && str !== '0') {
+    console.log(`Unknown leakage severity value "${value}", defaulting to 'small'`);
+    return 'small';
+  }
+  
+  return null;
+}
+
+// Convert any value to number or null
+function toNumber(value: any): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const num = typeof value === 'number' ? value : parseFloat(String(value).replace(',', '.'));
+  return isNaN(num) ? null : num;
+}
+
+// Normalize time format to HH:MM
+function normalizeTime(time: string): string {
+  if (!time) return '00:00';
+  // Remove seconds if present
+  const parts = time.split(':');
+  const hours = parts[0]?.padStart(2, '0') || '00';
+  const minutes = parts[1]?.padStart(2, '0') || '00';
+  return `${hours}:${minutes}`;
+}
+
+// Normalize date format to YYYY-MM-DD
+function normalizeDate(date: string | undefined, fallback: string): string {
+  if (!date) return fallback;
+  // Already in correct format
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  // Try to parse other formats
+  const d = new Date(date);
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0];
+  }
+  return fallback;
 }
 
 export function DiaryScanner() {
@@ -140,67 +193,117 @@ export function DiaryScanner() {
     setIsImporting(true);
     const today = new Date().toISOString().split('T')[0];
     const entriesToImport: DiaryEntryInsert[] = [];
+    const errors: string[] = [];
+
+    console.log('=== IMPORT STARTED ===');
+    console.log(`Voids selected: ${selectedVoids.size}, Intakes: ${selectedIntakes.size}, Leakages: ${selectedLeakages.size}`);
 
     // Collect void entries
     selectedVoids.forEach(index => {
       const entry = parsedData.voids[index];
-      const entryDate = entry.date || today;
-      entriesToImport.push({
-        date: entryDate,
-        time: entry.time + ':00',
-        event_type: 'void',
-        volume_ml: entry.volume || null,
-        urgency: entry.urgency || null,
-        notes: entry.notes || null,
-        source: 'scan',
-        confidence: entry.confidence,
-      });
+      try {
+        const entryDate = normalizeDate(entry.date, today);
+        const entryTime = normalizeTime(entry.time);
+        const volume = toNumber(entry.volume);
+        const urgency = toNumber(entry.urgency);
+        
+        console.log(`[Void ${index}] Date: ${entryDate}, Time: ${entryTime}, Volume: ${volume}ml`);
+        
+        entriesToImport.push({
+          date: entryDate,
+          time: entryTime + ':00',
+          event_type: 'void',
+          volume_ml: volume,
+          urgency: urgency ? Math.min(5, Math.max(1, Math.round(urgency))) : null,
+          notes: entry.notes || null,
+          source: 'scan',
+          confidence: entry.confidence,
+        });
+      } catch (err) {
+        const errMsg = `Failed to process void entry ${index}: ${err}`;
+        console.error(errMsg);
+        errors.push(errMsg);
+      }
     });
 
     // Collect intake entries
     selectedIntakes.forEach(index => {
       const entry = parsedData.intakes[index];
-      const entryDate = entry.date || today;
-      entriesToImport.push({
-        date: entryDate,
-        time: entry.time + ':00',
-        event_type: 'intake',
-        volume_ml: entry.volume || null,
-        intake_type: entry.type || null,
-        notes: entry.notes || null,
-        source: 'scan',
-        confidence: entry.confidence,
-      });
+      try {
+        const entryDate = normalizeDate(entry.date, today);
+        const entryTime = normalizeTime(entry.time);
+        const volume = toNumber(entry.volume);
+        
+        console.log(`[Intake ${index}] Date: ${entryDate}, Time: ${entryTime}, Volume: ${volume}ml, Type: ${entry.type}`);
+        
+        entriesToImport.push({
+          date: entryDate,
+          time: entryTime + ':00',
+          event_type: 'intake',
+          volume_ml: volume,
+          intake_type: entry.type || null,
+          notes: entry.notes || null,
+          source: 'scan',
+          confidence: entry.confidence,
+        });
+      } catch (err) {
+        const errMsg = `Failed to process intake entry ${index}: ${err}`;
+        console.error(errMsg);
+        errors.push(errMsg);
+      }
     });
 
     // Collect leakage entries
     selectedLeakages.forEach(index => {
       const entry = parsedData.leakages[index];
-      const entryDate = entry.date || today;
-      
-      // Calculate leakage weight if pad weights are present
-      let leakageWeight: number | null = null;
-      if (entry.dry_pad_weight_g && entry.wet_pad_weight_g) {
-        leakageWeight = Math.max(0, entry.wet_pad_weight_g - entry.dry_pad_weight_g);
+      try {
+        const entryDate = normalizeDate(entry.date, today);
+        const entryTime = normalizeTime(entry.time);
+        const dryWeight = toNumber(entry.dry_pad_weight_g);
+        const wetWeight = toNumber(entry.wet_pad_weight_g);
+        
+        // Normalize leakage severity - this is the key fix!
+        const normalizedSeverity = normalizeLeakageSeverity(entry.amount);
+        
+        // Calculate leakage weight if pad weights are present
+        let leakageWeight: number | null = null;
+        if (dryWeight !== null && wetWeight !== null) {
+          leakageWeight = Math.max(0, wetWeight - dryWeight);
+        }
+        
+        console.log(`[Leakage ${index}] Date: ${entryDate}, Time: ${entryTime}, Severity: ${entry.amount} -> ${normalizedSeverity}, Weight: ${leakageWeight}g`);
+        
+        entriesToImport.push({
+          date: entryDate,
+          time: entryTime + ':00',
+          event_type: 'leakage',
+          leakage_severity: normalizedSeverity,
+          trigger: entry.trigger || null,
+          notes: entry.notes || null,
+          source: 'scan',
+          confidence: entry.confidence,
+          dry_pad_weight_g: dryWeight,
+          wet_pad_weight_g: wetWeight,
+          leakage_weight_g: leakageWeight,
+        });
+      } catch (err) {
+        const errMsg = `Failed to process leakage entry ${index}: ${err}`;
+        console.error(errMsg);
+        errors.push(errMsg);
       }
-      
-      entriesToImport.push({
-        date: entryDate,
-        time: entry.time + ':00',
-        event_type: 'leakage',
-        leakage_severity: entry.amount || null,
-        trigger: entry.trigger || null,
-        notes: entry.notes || null,
-        source: 'scan',
-        confidence: entry.confidence,
-        dry_pad_weight_g: entry.dry_pad_weight_g || null,
-        wet_pad_weight_g: entry.wet_pad_weight_g || null,
-        leakage_weight_g: leakageWeight,
-      });
     });
+
+    console.log(`Total entries to import: ${entriesToImport.length}`);
+    console.log('Entries:', JSON.stringify(entriesToImport, null, 2));
+
+    if (errors.length > 0) {
+      console.error('Import preparation errors:', errors);
+    }
 
     try {
       const addedEntries = await addMultipleEntries(entriesToImport);
+      
+      console.log(`Successfully imported ${addedEntries.length} entries`);
       
       if (addedEntries.length > 0) {
         toast.success(`Imported ${addedEntries.length} entries to your diary!`);
@@ -208,13 +311,15 @@ export function DiaryScanner() {
         setImages([]);
         setCurrentView('dashboard');
       } else {
+        console.error('No entries were added to the database');
         toast.error('Failed to import entries. Please try again.');
       }
     } catch (err) {
-      console.error('Error importing entries:', err);
-      toast.error('Failed to import entries. Please try again.');
+      console.error('Database error importing entries:', err);
+      toast.error(`Failed to import entries: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setIsImporting(false);
+      console.log('=== IMPORT FINISHED ===');
     }
   };
 
@@ -457,7 +562,7 @@ export function DiaryScanner() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/jpg,image/*,.png,.jpg,.jpeg"
             multiple
             className="hidden"
             onChange={handleFileSelect}
@@ -465,7 +570,7 @@ export function DiaryScanner() {
           <input
             ref={cameraInputRef}
             type="file"
-            accept="image/*"
+            accept="image/png,image/jpeg,image/jpg,image/*,.png,.jpg,.jpeg"
             capture="environment"
             className="hidden"
             onChange={handleFileSelect}

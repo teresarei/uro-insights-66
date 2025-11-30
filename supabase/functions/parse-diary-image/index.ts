@@ -132,9 +132,13 @@ RULES:
 - Each row's date/time/weights are independent - never reuse across rows
 - Dates: YYYY-MM-DD format
 - Times: HH:MM (24-hour)
-- Convert volumes to ml
+- Convert volumes to ml (numeric values only)
 - If both dry & wet pad weights exist: net = wet - dry
 - For Swedish intake types, translate to English equivalents
+- IMPORTANT: For leakage "amount" field, ONLY use these exact values: "small", "medium", "large", or null
+  - If checkbox marked, yes, ja, x, or similar = "small"
+  - Liten = "small", Medel = "medium", Stor = "large"
+  - Never use "yes", "true", or other values
 
 OUTPUT (JSON only, no markdown):
 {"voids":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"urgency":null,"notes":null,"confidence":"high"}],"intakes":[{"date":"YYYY-MM-DD","time":"HH:MM","volume":123,"type":null,"notes":null,"confidence":"high"}],"leakages":[{"date":"YYYY-MM-DD","time":"HH:MM","amount":"small","dry_pad_weight_g":null,"wet_pad_weight_g":null,"trigger":null,"notes":null,"confidence":"high"}],"overallConfidence":"high","detectedLanguage":"en|sv"}
