@@ -2,7 +2,10 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DiaryEntry, ComputedStats } from '@/types/database';
 import { ClinicalPattern, RecordingBlock } from '@/types/urotracker';
+import { TreatmentPlan } from '@/types/roles';
 import { format, parseISO } from 'date-fns';
+import { sv } from 'date-fns/locale';
+import { getValidationSummary } from './recordingValidation';
 
 interface ExportOptions {
   entries: DiaryEntry[];
@@ -428,4 +431,323 @@ export function generateDiaryPDF(options: ExportOptions): void {
   // Save the PDF
   const fileName = `Void.AI_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
   doc.save(fileName);
+}
+
+// ========== DOCTOR CLINICAL SUMMARY PDF ==========
+
+interface DoctorExportOptions {
+  entries: DiaryEntry[];
+  stats: ComputedStats;
+  patientName: string;
+  patientPersonalNumber?: string;
+  doctorName: string;
+  treatmentPlans: TreatmentPlan[];
+  clinicalPatterns: ClinicalPattern[];
+  dateRange?: { start: string; end: string };
+}
+
+export function generateDoctorSummaryPDF(options: DoctorExportOptions): void {
+  const { 
+    entries, 
+    stats, 
+    patientName, 
+    patientPersonalNumber,
+    doctorName, 
+    treatmentPlans, 
+    clinicalPatterns,
+    dateRange 
+  } = options;
+  
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  let yPos = 20;
+
+  // Get validation summary
+  const validation = getValidationSummary(entries);
+
+  // ========== HEADER ==========
+  doc.setFontSize(20);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Klinisk Sammanfattning', 14, yPos);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(100);
+  doc.text('Blåsdagbok – Vårdgivarrapport', 14, yPos + 7);
+  
+  doc.setFontSize(9);
+  doc.text(`Utskriven: ${format(new Date(), 'd MMMM yyyy, HH:mm', { locale: sv })}`, pageWidth - 14, yPos, { align: 'right' });
+
+  yPos += 20;
+
+  // ========== PATIENT INFORMATION BOX ==========
+  doc.setFillColor(240, 245, 250);
+  doc.roundedRect(14, yPos, pageWidth - 28, 35, 3, 3, 'F');
+  
+  doc.setFontSize(11);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Patientinformation', 20, yPos + 8);
+  
+  doc.setFontSize(10);
+  doc.setTextColor(40);
+  doc.text(`Namn: ${patientName}`, 20, yPos + 18);
+  
+  if (patientPersonalNumber) {
+    doc.text(`Personnummer: ${patientPersonalNumber}`, 20, yPos + 26);
+  }
+  
+  if (dateRange) {
+    doc.text(`Mätperiod: ${dateRange.start} – ${dateRange.end}`, pageWidth / 2, yPos + 18);
+  }
+  
+  doc.text(`Ansvarig läkare: ${doctorName}`, pageWidth / 2, yPos + 26);
+
+  yPos += 45;
+
+  // ========== DATA QUALITY SECTION ==========
+  doc.setFontSize(12);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Datakvalitet', 14, yPos);
+  yPos += 8;
+
+  // Validation status box
+  const statusColor = validation.meets48hRequirement ? [220, 252, 231] : [254, 243, 199];
+  doc.setFillColor(...(statusColor as [number, number, number]));
+  doc.roundedRect(14, yPos, pageWidth - 28, 25, 2, 2, 'F');
+  
+  doc.setFontSize(10);
+  doc.setTextColor(40);
+  doc.text(
+    validation.meets48hRequirement 
+      ? '✓ Tillräcklig data för diagnostisk utvärdering (≥48 timmar)' 
+      : '⚠ Otillräcklig data för fullständig diagnostik',
+    20, yPos + 10
+  );
+  
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  doc.text(
+    `Loggade timmar: ${validation.loggedHours}h | Unika dagar: ${validation.uniqueCalendarDays} | Kompletteringsgrad: ${Math.round(validation.completionPercentage)}%`,
+    20, yPos + 18
+  );
+
+  yPos += 35;
+
+  // ========== SUMMARY STATISTICS ==========
+  doc.setFontSize(12);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Sammanfattande statistik', 14, yPos);
+  yPos += 10;
+
+  const statsData = [
+    ['Totalt antal miktioner', String(stats.totalVoids)],
+    ['Miktioner dagtid (06-22)', String(stats.dayVoids)],
+    ['Miktioner nattetid (22-06)', String(stats.nightVoids)],
+    ['Totalt vätskeintag', `${stats.totalIntake} mL`],
+    ['Median miktionsvolym', `${stats.medianVolume} mL`],
+    ['Volymintervall', `${stats.minVolume || 0} – ${stats.maxVolume || 0} mL`],
+    ['Läckageepisoder', String(stats.totalLeakages)],
+    ['Total läckagevikt', stats.totalLeakageWeight > 0 ? `${stats.totalLeakageWeight.toFixed(1)} g` : '–'],
+  ];
+
+  autoTable(doc, {
+    startY: yPos,
+    head: [['Parameter', 'Värde']],
+    body: statsData,
+    theme: 'striped',
+    headStyles: {
+      fillColor: PRIMARY_COLOR,
+      textColor: [255, 255, 255],
+      fontSize: 9,
+    },
+    styles: {
+      fontSize: 9,
+      cellPadding: 3,
+    },
+    columnStyles: {
+      0: { cellWidth: 80 },
+      1: { cellWidth: 50 },
+    },
+  });
+
+  yPos = (doc as any).lastAutoTable.finalY + 12;
+  yPos = checkNewPage(doc, yPos, 80);
+
+  // ========== CLINICAL PATTERNS ==========
+  doc.setFontSize(12);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Diagnostisk bedömning', 14, yPos);
+  yPos += 10;
+
+  if (!validation.meets48hRequirement) {
+    doc.setFillColor(254, 243, 199);
+    doc.roundedRect(14, yPos, pageWidth - 28, 15, 2, 2, 'F');
+    doc.setFontSize(9);
+    doc.setTextColor(120, 80, 0);
+    doc.text('Diagnostisk bedömning kräver minst 48 timmars loggad data.', 20, yPos + 10);
+    yPos += 25;
+  } else if (clinicalPatterns.length > 0) {
+    const patternData = clinicalPatterns.map((pattern, idx) => {
+      const probText = pattern.probability === 'high' ? 'Hög' : pattern.probability === 'moderate' ? 'Måttlig' : 'Låg';
+      return [
+        pattern.name,
+        probText,
+        pattern.reasoning.length > 80 ? pattern.reasoning.substring(0, 77) + '...' : pattern.reasoning,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Mönster', 'Sannolikhet', 'Resonemang']],
+      body: patternData,
+      theme: 'striped',
+      headStyles: {
+        fillColor: PRIMARY_COLOR,
+        textColor: [255, 255, 255],
+        fontSize: 9,
+      },
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+      },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 103 },
+      },
+    });
+
+    yPos = (doc as any).lastAutoTable.finalY + 12;
+  } else {
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text('Inga avvikande mönster identifierade.', 14, yPos);
+    yPos += 10;
+  }
+
+  yPos = checkNewPage(doc, yPos, 80);
+
+  // ========== RECOMMENDATIONS ==========
+  if (validation.meets48hRequirement && clinicalPatterns.length > 0) {
+    doc.setFontSize(12);
+    doc.setTextColor(...PRIMARY_COLOR);
+    doc.text('Rekommendationer', 14, yPos);
+    yPos += 8;
+
+    clinicalPatterns.forEach((pattern, idx) => {
+      yPos = checkNewPage(doc, yPos, 30);
+      
+      doc.setFontSize(9);
+      doc.setTextColor(40);
+      doc.text(`${idx + 1}. ${pattern.name}:`, 14, yPos);
+      
+      const recLines = doc.splitTextToSize(pattern.recommendation, pageWidth - 40);
+      doc.setTextColor(80);
+      doc.text(recLines.slice(0, 3), 20, yPos + 5);
+      yPos += 5 + Math.min(recLines.length, 3) * 4 + 4;
+    });
+
+    yPos += 5;
+  }
+
+  yPos = checkNewPage(doc, yPos, 80);
+
+  // ========== TREATMENT PLANS ==========
+  doc.setFontSize(12);
+  doc.setTextColor(...PRIMARY_COLOR);
+  doc.text('Behandlingsplan', 14, yPos);
+  yPos += 10;
+
+  if (treatmentPlans.length > 0) {
+    treatmentPlans.forEach((plan, idx) => {
+      yPos = checkNewPage(doc, yPos, 50);
+
+      // Plan header
+      doc.setFillColor(252, 250, 245);
+      doc.roundedRect(14, yPos, pageWidth - 28, 8, 2, 2, 'F');
+      doc.setFontSize(9);
+      doc.setTextColor(80);
+      doc.text(`Plan ${idx + 1} – ${format(new Date(plan.created_at), 'd MMMM yyyy', { locale: sv })}`, 18, yPos + 5.5);
+      yPos += 12;
+
+      // Plan text
+      doc.setFontSize(9);
+      doc.setTextColor(40);
+      const planLines = doc.splitTextToSize(plan.plan_text, pageWidth - 36);
+      doc.text(planLines.slice(0, 8), 18, yPos);
+      yPos += Math.min(planLines.length, 8) * 4 + 4;
+
+      // Clinician notes
+      if (plan.clinician_notes) {
+        doc.setFontSize(8);
+        doc.setTextColor(100);
+        doc.text('Kliniska anteckningar:', 18, yPos);
+        yPos += 4;
+        
+        doc.setFontSize(8);
+        doc.setTextColor(80);
+        const noteLines = doc.splitTextToSize(plan.clinician_notes, pageWidth - 40);
+        doc.text(noteLines.slice(0, 4), 22, yPos);
+        yPos += Math.min(noteLines.length, 4) * 3.5 + 4;
+      }
+
+      yPos += 6;
+    });
+  } else {
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    doc.text('Ingen behandlingsplan har registrerats.', 14, yPos);
+    yPos += 10;
+  }
+
+  // ========== GUIDELINE REFERENCE ==========
+  yPos = checkNewPage(doc, yPos, 30);
+  yPos += 5;
+  
+  doc.setFillColor(240, 248, 255);
+  doc.roundedRect(14, yPos, pageWidth - 28, 15, 2, 2, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(60);
+  doc.text('Riktlinjereferens: EAU Guidelines on Urinary Incontinence (2023)', 20, yPos + 6);
+  doc.text('Diagnostiska mönster och rekommendationer baserade på kliniska riktlinjer.', 20, yPos + 11);
+
+  // ========== FOOTER ==========
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    addDoctorPageFooter(doc, i, pageCount, doctorName);
+  }
+
+  // Save the PDF
+  const safePatientName = patientName.replace(/[^a-zA-Z0-9]/g, '_');
+  const fileName = `Klinisk_Sammanfattning_${safePatientName}_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+  doc.save(fileName);
+}
+
+function addDoctorPageFooter(doc: jsPDF, pageNum: number, totalPages: number, doctorName: string) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  
+  doc.setFontSize(7);
+  doc.setTextColor(120);
+  doc.text(
+    `Sida ${pageNum} av ${totalPages}`,
+    pageWidth / 2,
+    pageHeight - 15,
+    { align: 'center' }
+  );
+  doc.text(
+    `Void.AI v${APP_VERSION} | ${doctorName}`,
+    14,
+    pageHeight - 15
+  );
+  
+  // Disclaimer
+  doc.setFontSize(6);
+  doc.setTextColor(150);
+  doc.text(
+    'Detta dokument sammanfattar dagboksdata och riktlinjebaserade mönster. Det utgör inte en medicinsk diagnos.',
+    pageWidth / 2,
+    pageHeight - 10,
+    { align: 'center' }
+  );
 }
