@@ -1,9 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ExternalLink, Moon, FileText, Info } from 'lucide-react';
-import nocturiaPreview from '@/assets/eau-nocturia-cheatsheet-preview.png';
+import nocturiaPreview from '@/assets/eau-nocturia-cheatsheet-preview.jpg';
 
-const EAU_NOCTURIA_PDF_URL = 'https://d56bochluxqnz.cloudfront.net/documents/EAU-Cheat-Sheet-EAU-Guidelines-on-Male-LUTS-V-Management-of-Nocturia.pdf';
+// Local PDF in public folder for reliable access
+const EAU_NOCTURIA_PDF_URL = '/docs/EAU-Nocturia-Guidelines.pdf';
 
 interface NocturiaGuidanceProps {
   isMalePatient: boolean;
