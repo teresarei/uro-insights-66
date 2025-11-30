@@ -34,7 +34,10 @@ export type Database = {
           updated_at: string
           urgency: number | null
           user_id: string | null
+          uses_catheter: boolean | null
           volume_ml: number | null
+          volume_with_catheter_ml: number | null
+          volume_without_catheter_ml: number | null
           wet_pad_weight_g: number | null
         }
         Insert: {
@@ -56,7 +59,10 @@ export type Database = {
           updated_at?: string
           urgency?: number | null
           user_id?: string | null
+          uses_catheter?: boolean | null
           volume_ml?: number | null
+          volume_with_catheter_ml?: number | null
+          volume_without_catheter_ml?: number | null
           wet_pad_weight_g?: number | null
         }
         Update: {
@@ -78,7 +84,10 @@ export type Database = {
           updated_at?: string
           urgency?: number | null
           user_id?: string | null
+          uses_catheter?: boolean | null
           volume_ml?: number | null
+          volume_with_catheter_ml?: number | null
+          volume_without_catheter_ml?: number | null
           wet_pad_weight_g?: number | null
         }
         Relationships: []

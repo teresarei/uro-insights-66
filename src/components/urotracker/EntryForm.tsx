@@ -21,12 +21,17 @@ import {
   Clock,
   Gauge,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Syringe
 } from 'lucide-react';
 
 type EntryType = 'void' | 'intake' | 'leakage';
 
-export function EntryForm() {
+interface EntryFormProps {
+  usesCatheter?: boolean;
+}
+
+export function EntryForm({ usesCatheter = false }: EntryFormProps) {
   const { addVoidEntry, addIntakeEntry, addLeakageEntry, setCurrentView } = useDiary();
   const [activeTab, setActiveTab] = useState<EntryType>('void');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -39,6 +44,10 @@ export function EntryForm() {
   const [voidVolume, setVoidVolume] = useState('');
   const [voidUrgency, setVoidUrgency] = useState<string>('');
   const [voidNotes, setVoidNotes] = useState('');
+  
+  // Catheter-specific void fields
+  const [volumeWithCatheter, setVolumeWithCatheter] = useState('');
+  const [volumeWithoutCatheter, setVolumeWithoutCatheter] = useState('');
 
   // Intake form state
   const [intakeTime, setIntakeTime] = useState(() => {
@@ -61,22 +70,42 @@ export function EntryForm() {
   const [wetPadWeight, setWetPadWeight] = useState('');
 
   const handleVoidSubmit = async () => {
-    if (!voidVolume) {
-      toast({
-        title: "Missing information",
-        description: "Please enter the volume voided.",
-        variant: "destructive",
-      });
-      return;
+    // Validate based on catheter mode
+    if (usesCatheter) {
+      if (!volumeWithCatheter && !volumeWithoutCatheter) {
+        toast({
+          title: "Missing information",
+          description: "Please enter at least one volume (with or without catheter).",
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      if (!voidVolume) {
+        toast({
+          title: "Missing information",
+          description: "Please enter the volume voided.",
+          variant: "destructive",
+        });
+        return;
+      }
     }
 
     setIsSubmitting(true);
     try {
+      // Calculate total volume for catheter users
+      const totalVolume = usesCatheter
+        ? (parseInt(volumeWithCatheter) || 0) + (parseInt(volumeWithoutCatheter) || 0)
+        : parseInt(voidVolume);
+
       await addVoidEntry({
         time: voidTime,
-        volume: parseInt(voidVolume),
+        volume: totalVolume,
         urgency: voidUrgency ? parseInt(voidUrgency) : undefined,
         notes: voidNotes || undefined,
+        usesCatheter,
+        volumeWithCatheter: usesCatheter && volumeWithCatheter ? parseInt(volumeWithCatheter) : undefined,
+        volumeWithoutCatheter: usesCatheter && volumeWithoutCatheter ? parseInt(volumeWithoutCatheter) : undefined,
       });
 
       toast({
@@ -88,6 +117,8 @@ export function EntryForm() {
       setVoidVolume('');
       setVoidUrgency('');
       setVoidNotes('');
+      setVolumeWithCatheter('');
+      setVolumeWithoutCatheter('');
     } catch (err) {
       toast({
         title: "Error",
@@ -221,6 +252,12 @@ export function EntryForm() {
                   <Droplets className="h-4 w-4 text-highlight-strong" />
                 </div>
                 Bathroom Visit
+                {usesCatheter && (
+                  <span className="ml-2 text-xs font-normal px-2 py-1 rounded-full bg-primary/10 text-primary flex items-center gap-1">
+                    <Syringe className="h-3 w-3" />
+                    Catheter
+                  </span>
+                )}
               </CardTitle>
               <CardDescription>
                 Record when and how much you voided
@@ -241,38 +278,93 @@ export function EntryForm() {
                     className="h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="void-volume" className="flex items-center gap-2">
-                    <Gauge className="h-4 w-4 text-muted-foreground" />
-                    Volume (ml)
-                  </Label>
-                  <Input
-                    id="void-volume"
-                    type="number"
-                    placeholder="e.g., 250"
-                    value={voidVolume}
-                    onChange={(e) => setVoidVolume(e.target.value)}
-                    className="h-11"
-                  />
-                </div>
+                
+                {/* Show different fields based on catheter use */}
+                {!usesCatheter && (
+                  <div className="space-y-2">
+                    <Label htmlFor="void-volume" className="flex items-center gap-2">
+                      <Gauge className="h-4 w-4 text-muted-foreground" />
+                      Volume (ml)
+                    </Label>
+                    <Input
+                      id="void-volume"
+                      type="number"
+                      placeholder="e.g., 250"
+                      value={voidVolume}
+                      onChange={(e) => setVoidVolume(e.target.value)}
+                      className="h-11"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Quick select volume</Label>
-                <div className="flex flex-wrap gap-2">
-                  {quickVolumes.map((vol) => (
-                    <Button
-                      key={vol}
-                      type="button"
-                      variant={voidVolume === vol.toString() ? 'soft' : 'outline'}
-                      size="sm"
-                      onClick={() => setVoidVolume(vol.toString())}
-                    >
-                      {vol}ml
-                    </Button>
-                  ))}
+              {/* Catheter-specific volume fields */}
+              {usesCatheter && (
+                <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Syringe className="h-4 w-4 text-primary" />
+                    <Label className="font-medium text-primary">Catheter Volume Recording</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Record the volumes separately for accurate tracking.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="volume-with-catheter" className="text-sm">
+                        Volume with catheter (ml)
+                      </Label>
+                      <Input
+                        id="volume-with-catheter"
+                        type="number"
+                        placeholder="e.g., 200"
+                        value={volumeWithCatheter}
+                        onChange={(e) => setVolumeWithCatheter(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="volume-without-catheter" className="text-sm">
+                        Volume without catheter (ml)
+                      </Label>
+                      <Input
+                        id="volume-without-catheter"
+                        type="number"
+                        placeholder="e.g., 50"
+                        value={volumeWithoutCatheter}
+                        onChange={(e) => setVolumeWithoutCatheter(e.target.value)}
+                        className="h-11"
+                      />
+                    </div>
+                  </div>
+                  {(volumeWithCatheter || volumeWithoutCatheter) && (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="text-sm font-medium text-primary">
+                        Total volume: {(parseInt(volumeWithCatheter) || 0) + (parseInt(volumeWithoutCatheter) || 0)} ml
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Quick select - only show when not using catheter */}
+              {!usesCatheter && (
+                <div className="space-y-2">
+                  <Label className="text-sm text-muted-foreground">Quick select volume</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {quickVolumes.map((vol) => (
+                      <Button
+                        key={vol}
+                        type="button"
+                        variant={voidVolume === vol.toString() ? 'soft' : 'outline'}
+                        size="sm"
+                        onClick={() => setVoidVolume(vol.toString())}
+                      >
+                        {vol}ml
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label htmlFor="void-urgency">Urgency level (optional)</Label>

@@ -30,7 +30,7 @@ function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
     { align: 'center' }
   );
   doc.text(
-    `UroTracker v${APP_VERSION}`,
+    `Voida v${APP_VERSION}`,
     14,
     pageHeight - 15
   );
@@ -65,7 +65,7 @@ export function generateDiaryPDF(options: ExportOptions): void {
   // ========== SECTION A: HEADER ==========
   doc.setFontSize(22);
   doc.setTextColor(...PRIMARY_COLOR);
-  doc.text('UroTracker', 14, yPos);
+  doc.text('Voida', 14, yPos);
   
   doc.setFontSize(11);
   doc.setTextColor(100);
@@ -151,17 +151,37 @@ export function generateDiaryPDF(options: ExportOptions): void {
     
     yPos += 4;
 
-    const voidData = voids.map(v => [
-      format(parseISO(v.date), 'MMM d'),
-      v.time.slice(0, 5),
-      `${v.volume_ml || '-'} ml`,
-      v.urgency ? `${v.urgency}/5` : '-',
-      (v.notes || '-').substring(0, 30),
-    ]);
+    // Check if any voids use catheter to decide column layout
+    const hasCatheterVoids = voids.some(v => (v as any).uses_catheter);
+
+    const voidData = voids.map(v => {
+      const entry = v as any;
+      const baseRow = [
+        format(parseISO(v.date), 'MMM d'),
+        v.time.slice(0, 5),
+        `${v.volume_ml || '-'} ml`,
+        v.urgency ? `${v.urgency}/5` : '-',
+      ];
+      
+      if (hasCatheterVoids) {
+        // Add catheter columns
+        const catheterInfo = entry.uses_catheter 
+          ? `W:${entry.volume_with_catheter_ml || '-'} / WO:${entry.volume_without_catheter_ml || '-'}`
+          : '-';
+        baseRow.push(catheterInfo);
+      }
+      
+      baseRow.push((v.notes || '-').substring(0, 25));
+      return baseRow;
+    });
+
+    const headers = hasCatheterVoids 
+      ? [['Date', 'Time', 'Total Vol', 'Urgency', 'Catheter (W/WO)', 'Notes']]
+      : [['Date', 'Time', 'Volume', 'Urgency', 'Notes']];
 
     autoTable(doc, {
       startY: yPos,
-      head: [['Date', 'Time', 'Volume', 'Urgency', 'Notes']],
+      head: headers,
       body: voidData,
       theme: 'striped',
       headStyles: {
@@ -172,9 +192,9 @@ export function generateDiaryPDF(options: ExportOptions): void {
         fontSize: 8,
         cellPadding: 3,
       },
-      columnStyles: {
-        4: { cellWidth: 50 },
-      },
+      columnStyles: hasCatheterVoids 
+        ? { 5: { cellWidth: 35 } }
+        : { 4: { cellWidth: 50 } },
     });
 
     yPos = (doc as any).lastAutoTable.finalY + 10;
@@ -414,7 +434,7 @@ export function generateDiaryPDF(options: ExportOptions): void {
   }
 
   // Save the PDF
-  const fileName = `UroTracker_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+  const fileName = `Voida_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
   doc.save(fileName);
 }
 

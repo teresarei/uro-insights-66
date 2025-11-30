@@ -21,6 +21,9 @@ export interface DiaryEntry {
   dry_pad_weight_g: number | null;
   wet_pad_weight_g: number | null;
   leakage_weight_g: number | null;
+  uses_catheter: boolean | null;
+  volume_with_catheter_ml: number | null;
+  volume_without_catheter_ml: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +44,9 @@ export interface DiaryEntryInsert {
   dry_pad_weight_g?: number | null;
   wet_pad_weight_g?: number | null;
   leakage_weight_g?: number | null;
+  uses_catheter?: boolean | null;
+  volume_with_catheter_ml?: number | null;
+  volume_without_catheter_ml?: number | null;
 }
 
 export interface DiaryEntryUpdate {
@@ -58,6 +64,9 @@ export interface DiaryEntryUpdate {
   dry_pad_weight_g?: number | null;
   wet_pad_weight_g?: number | null;
   leakage_weight_g?: number | null;
+  uses_catheter?: boolean | null;
+  volume_with_catheter_ml?: number | null;
+  volume_without_catheter_ml?: number | null;
 }
 
 // Stats computed from entries
