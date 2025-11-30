@@ -98,13 +98,13 @@ export function PatientList() {
   }
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-4 sm:space-y-6 animate-slide-up">
       <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-foreground flex items-center gap-2">
-          <Users className="h-6 w-6 text-primary" />
+        <h1 className="text-xl sm:text-2xl font-semibold text-foreground flex items-center gap-2">
+          <Users className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
           Mina Patienter
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           {patients.length} patienter tilldelade
         </p>
       </div>
@@ -113,20 +113,20 @@ export function PatientList() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Sök patient (namn eller personnummer)..."
+          placeholder="Sök patient..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
+          className="pl-10 text-sm"
         />
       </div>
 
       {/* Patient list */}
-      <div className="space-y-3">
+      <div className="space-y-2 sm:space-y-3">
         {filteredPatients.length === 0 ? (
           <Card>
-            <CardContent className="py-12 text-center">
-              <User className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">
+            <CardContent className="py-8 sm:py-12 text-center">
+              <User className="h-10 w-10 sm:h-12 sm:w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-sm text-muted-foreground">
                 {searchTerm ? 'Inga patienter matchade sökningen' : 'Inga patienter tilldelade ännu'}
               </p>
             </CardContent>
@@ -139,48 +139,38 @@ export function PatientList() {
               className="hover:border-primary/50 transition-colors cursor-pointer"
               onClick={() => handleSelectPatient(patient)}
             >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <User className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-foreground">{patient.display_name}</h3>
-                      <p className="text-sm text-muted-foreground font-mono">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{patient.display_name}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground font-mono truncate">
                         {patient.personal_number}
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-3">
-                    {patient.lastRecordingDate && (
-                      <div className="text-right hidden sm:block">
-                        <p className="text-xs text-muted-foreground">Senaste registrering</p>
-                        <p className="text-sm text-foreground flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {new Date(patient.lastRecordingDate).toLocaleDateString('sv-SE')}
-                        </p>
-                      </div>
-                    )}
-                    
+                  <div className="flex items-center gap-1 sm:gap-3 shrink-0">
                     {patient.meets48hRequirement !== undefined && (
                       <Badge 
                         variant={patient.meets48hRequirement ? 'default' : 'secondary'}
-                        className={patient.meets48hRequirement 
+                        className={`text-xs ${patient.meets48hRequirement 
                           ? 'bg-success/10 text-success border-success/20' 
                           : 'bg-warning-soft text-warning-foreground border-warning/20'
-                        }
+                        }`}
                       >
                         {patient.meets48hRequirement ? (
-                          <><CheckCircle className="h-3 w-3 mr-1" /> ≥48h</>
+                          <><CheckCircle className="h-3 w-3 mr-0.5 sm:mr-1" /> <span className="hidden xs:inline">≥48h</span></>
                         ) : (
-                          <><AlertTriangle className="h-3 w-3 mr-1" /> &lt;48h</>
+                          <><AlertTriangle className="h-3 w-3 mr-0.5 sm:mr-1" /> <span className="hidden xs:inline">&lt;48h</span></>
                         )}
                       </Badge>
                     )}
                     
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -193,10 +183,9 @@ export function PatientList() {
 
       {/* Info card */}
       <Card className="bg-info-soft border-info/30">
-        <CardContent className="p-4">
-          <p className="text-sm text-info-foreground">
-            <strong>Tips:</strong> Klicka på en patient för att se deras dagbok, 
-            insikter och för att lägga till behandlingsplan.
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-info-foreground">
+            <strong>Tips:</strong> Klicka på en patient för att se deras dagbok och lägga till behandlingsplan.
           </p>
         </CardContent>
       </Card>

@@ -242,46 +242,47 @@ export function EntriesOverview() {
   }
 
   return (
-    <div className="space-y-6 animate-slide-up">
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">Entries Overview</h1>
-          <p className="text-muted-foreground">
-            View, edit, and manage all your diary entries in one place.
+    <div className="space-y-4 sm:space-y-6 animate-slide-up">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground">Entries Overview</h1>
+          <p className="text-sm text-muted-foreground">
+            View, edit, and manage all your diary entries.
           </p>
         </div>
         {entries.length > 0 && (
           <Button 
             variant="destructive" 
             onClick={() => setShowDeleteAllDialog(true)}
-            className="shrink-0"
+            className="shrink-0 w-full sm:w-auto text-sm"
+            size="sm"
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete All Entries
+            Delete All
           </Button>
         )}
       </div>
 
       {/* Filters */}
       <Card variant="elevated">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="relative sm:col-span-2 lg:col-span-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search notes, triggers..."
+                placeholder="Search notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 text-sm"
               />
             </div>
             
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[140px]">
-                <Filter className="h-4 w-4 mr-2" />
+              <SelectTrigger className="w-full text-sm">
+                <Filter className="h-4 w-4 mr-2 shrink-0" />
                 <SelectValue placeholder="All types" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-popover">
                 <SelectItem value="all">All types</SelectItem>
                 <SelectItem value="void">Voids</SelectItem>
                 <SelectItem value="intake">Intakes</SelectItem>
@@ -294,15 +295,15 @@ export function EntriesOverview() {
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-[140px]"
-                placeholder="Start date"
+                className="flex-1 text-sm"
+                placeholder="Start"
               />
               <Input
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-[140px]"
-                placeholder="End date"
+                className="flex-1 text-sm"
+                placeholder="End"
               />
             </div>
 
@@ -310,6 +311,7 @@ export function EntriesOverview() {
               variant="outline"
               size="icon"
               onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="shrink-0"
             >
               <ArrowUpDown className="h-4 w-4" />
             </Button>

@@ -30,21 +30,21 @@ export function StatCard({
   return (
     <Card 
       variant="stat" 
-      className={cn("p-5 animate-fade-in", className)}
+      className={cn("p-3 sm:p-5 animate-fade-in min-w-0", className)}
     >
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-3xl font-bold text-foreground">{value}</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground truncate">{title}</p>
+          <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground break-words">{value}</p>
           {subtitle && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{subtitle}</p>
           )}
         </div>
         <div className={cn(
-          "flex h-11 w-11 items-center justify-center rounded-xl transition-transform hover:scale-110",
+          "flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-lg sm:rounded-xl transition-transform hover:scale-110 shrink-0",
           iconVariants[variant]
         )}>
-          <Icon className="h-5 w-5" />
+          <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
         </div>
       </div>
     </Card>
