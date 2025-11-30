@@ -43,7 +43,7 @@ function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
     { align: 'center' }
   );
   doc.text(
-    `Voida v${APP_VERSION}`,
+    `Void.AI v${APP_VERSION}`,
     14,
     pageHeight - 15
   );
@@ -159,7 +159,7 @@ export function generateDiaryPDF(options: ExportOptions): void {
   // ========== SECTION A: HEADER ==========
   doc.setFontSize(22);
   doc.setTextColor(...PRIMARY_COLOR);
-  doc.text('Voida', 14, yPos);
+  doc.text('Void.AI', 14, yPos);
   
   doc.setFontSize(11);
   doc.setTextColor(100);
@@ -426,6 +426,6 @@ export function generateDiaryPDF(options: ExportOptions): void {
   }
 
   // Save the PDF
-  const fileName = `Voida_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+  const fileName = `Void.AI_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
   doc.save(fileName);
 }

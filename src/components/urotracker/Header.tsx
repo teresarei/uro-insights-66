@@ -44,7 +44,7 @@ export function Header() {
             <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-hero shadow-soft">
               <Droplets className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold text-foreground">Voida</span>
+            <span className="text-xl font-semibold text-foreground">Void.AI</span>
           </button>
 
           <nav className="hidden lg:flex items-center gap-1">
