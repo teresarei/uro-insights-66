@@ -272,9 +272,9 @@ export function DoctorInsightsView() {
               <p className="text-xs text-muted-foreground">Loggade timmar</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
-              <Calendar className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
-              <p className="text-2xl font-bold">{validationSummary.uniqueCalendarDays}</p>
-              <p className="text-xs text-muted-foreground">Unika dagar</p>
+              <Droplets className="h-5 w-5 mx-auto mb-1 text-primary" />
+              <p className="text-2xl font-bold">{stats.medianVolume || 0}</p>
+              <p className="text-xs text-muted-foreground">Median ml ({stats.minVolume || 0}–{stats.maxVolume || 0})</p>
             </div>
             <div className="text-center p-3 rounded-lg bg-muted/50">
               <Droplets className="h-5 w-5 mx-auto mb-1 text-primary" />
