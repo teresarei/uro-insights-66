@@ -207,40 +207,40 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
   }
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-4 sm:space-y-6 animate-slide-up">
       {/* Doctor viewing patient banner */}
       {readOnly && patientName && (
         <Alert className="bg-info-soft border-info/30">
           <Eye className="h-4 w-4 text-info" />
-          <AlertDescription className="flex items-center gap-2 text-info-foreground">
-            <User className="h-4 w-4" />
-            <span>Viewing Dashboard for Patient: <strong>{patientName}</strong></span>
+          <AlertDescription className="flex items-center gap-2 text-info-foreground text-sm">
+            <User className="h-4 w-4 shrink-0" />
+            <span className="break-words">Viewing Dashboard for Patient: <strong>{patientName}</strong></span>
           </AlertDescription>
         </Alert>
       )}
 
       {/* Header with title */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold text-foreground">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+        <div className="space-y-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold text-foreground break-words">
             {readOnly ? 'Patient Bladder Rhythm' : "Here's how your bladder rhythm looks"}
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Last updated {format(new Date(), 'MMM d, h:mm a')}
           </p>
         </div>
-        <Badge variant="secondary" className="flex items-center gap-1.5">
-          <Calendar className="h-3.5 w-3.5" />
-          {timeRangeLabel}
+        <Badge variant="secondary" className="flex items-center gap-1.5 self-start shrink-0">
+          <Calendar className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+          <span className="text-xs sm:text-sm">{timeRangeLabel}</span>
         </Badge>
       </div>
 
       {/* Date Range Selector */}
       <Card variant="elevated">
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-end">
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+        <CardContent className="p-3 sm:p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="startDate" className="text-xs sm:text-sm font-medium">Start Date</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -250,10 +250,11 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
                   setDateError(null);
                 }}
                 max={today}
+                className="text-sm"
               />
             </div>
-            <div className="flex-1 space-y-2">
-              <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="endDate" className="text-xs sm:text-sm font-medium">End Date</Label>
               <Input
                 id="endDate"
                 type="date"
@@ -263,20 +264,22 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
                   setDateError(null);
                 }}
                 max={today}
+                className="text-sm"
               />
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleApplyTimeframe}>
-                <Clock className="h-4 w-4 mr-2" />
-                Apply Timeframe
+            <div className="flex gap-2 sm:col-span-2 lg:col-span-2 items-end">
+              <Button onClick={handleApplyTimeframe} className="flex-1 sm:flex-none text-sm">
+                <Clock className="h-4 w-4 mr-1.5 sm:mr-2" />
+                <span className="hidden xs:inline">Apply</span>
+                <span className="xs:hidden">Apply</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={handleReset} title="Reset to last 24 hours">
+              <Button variant="outline" size="icon" onClick={handleReset} title="Reset to last 24 hours" className="shrink-0">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
           </div>
           {dateError && (
-            <p className="text-sm text-destructive mt-2">{dateError}</p>
+            <p className="text-xs sm:text-sm text-destructive mt-2">{dateError}</p>
           )}
         </CardContent>
       </Card>
@@ -300,27 +303,27 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
         <>
           {/* Voids highlight */}
           <Card variant="highlight" className="border-primary/30">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
+            <CardContent className="p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Droplets className="h-6 w-6 text-primary" />
+                  <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                    <Droplets className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Voids in selected period</p>
-                    <p className="text-3xl font-bold text-foreground">{stats.totalVoids}</p>
+                    <p className="text-xs sm:text-sm text-muted-foreground">Voids in selected period</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-foreground">{stats.totalVoids}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm text-muted-foreground">Normal range</p>
-                  <p className="text-sm font-medium text-foreground">6-8 per day</p>
+                <div className="text-left sm:text-right pl-13 sm:pl-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Normal range</p>
+                  <p className="text-xs sm:text-sm font-medium text-foreground">6-8 per day</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           {/* Quick stats grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             <StatCard
               title="Total Voids"
               value={stats.totalVoids}
@@ -338,22 +341,22 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
             <StatCard
               title="Median Volume"
               value={`${stats.medianVolume}ml`}
-              subtitle={`Range: ${stats.minVolume}-${stats.maxVolume}ml`}
+              subtitle={`${stats.minVolume}-${stats.maxVolume}ml`}
               icon={Gauge}
               variant="success"
             />
             <StatCard
               title="Leakage Events"
               value={stats.totalLeakages}
-              subtitle={stats.totalLeakages > 0 ? `~${stats.totalLeakages}/day` : 'None recorded'}
+              subtitle={stats.totalLeakages > 0 ? `~${stats.totalLeakages}/day` : 'None'}
               icon={AlertCircle}
               variant={stats.totalLeakages > 0 ? 'warning' : 'default'}
             />
             {stats.totalLeakageWeight > 0 && (
             <StatCard
-              title="Total leakage weight"
+              title="Leakage weight"
               value={stats.totalLeakageWeight}
-              subtitle={stats.totalLeakageWeight > 0 ? `${stats.totalLeakages} events` : 'None recorded'}
+              subtitle={`${stats.totalLeakages} events`}
               icon={Scale}
               variant={stats.totalLeakageWeight > 100 ? 'warning' : 'success'}
             />
@@ -362,20 +365,20 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
 
           {/* Charts section */}
           {hourlyData.length > 0 && (
-            <div className="grid lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
               {/* Hourly voids chart */}
               <Card variant="elevated" className="animate-fade-in">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-primary" />
+                <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                     Hourly Voiding Pattern
                   </CardTitle>
-                  <CardDescription>
-                    Number of bathroom trips per hour
+                  <CardDescription className="text-xs sm:text-sm">
+                    Bathroom trips per hour
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-64">
+                <CardContent className="p-2 sm:p-6 pt-0">
+                  <div className="h-48 sm:h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={hourlyData}>
                         <defs>
@@ -419,29 +422,31 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
 
               {/* Fluid intake chart */}
               <Card variant="elevated" className="animate-fade-in" style={{ animationDelay: '0.1s' }}>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GlassWater className="h-5 w-5 text-info" />
+                <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-4">
+                  <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                    <GlassWater className="h-4 w-4 sm:h-5 sm:w-5 text-info" />
                     Fluid Intake
                   </CardTitle>
-                  <CardDescription>
-                    Hourly fluid consumption in liters
+                  <CardDescription className="text-xs sm:text-sm">
+                    Hourly consumption (L)
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="h-64">
+                <CardContent className="p-2 sm:p-6 pt-0">
+                  <div className="h-48 sm:h-64">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={hourlyData}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis 
                           dataKey="hour" 
                           stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
+                          fontSize={10}
+                          tick={{ fontSize: 10 }}
                         />
                         <YAxis 
                           stroke="hsl(var(--muted-foreground))"
-                          fontSize={12}
-                          unit="L"
+                          fontSize={10}
+                          width={30}
+                          tick={{ fontSize: 10 }}
                         />
                         <Tooltip
                           contentStyle={{
@@ -449,6 +454,7 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
                             border: '1px solid hsl(var(--border))',
                             borderRadius: '12px',
                             boxShadow: 'var(--shadow-card)',
+                            fontSize: '12px',
                           }}
                           formatter={(value: number) => [`${value}L`, 'Intake']}
                           labelFormatter={(_, payload) => payload[0]?.payload?.fullDate || ''}
@@ -456,7 +462,7 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
                         <Bar
                           dataKey="intake"
                           fill="hsl(var(--info))"
-                          radius={[6, 6, 0, 0]}
+                          radius={[4, 4, 0, 0]}
                           name="Intake"
                         />
                       </BarChart>
