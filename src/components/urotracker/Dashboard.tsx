@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Droplets, 
   TrendingUp, 
@@ -21,7 +22,9 @@ import {
   Loader2,
   Scale,
   Calendar,
-  RefreshCw
+  RefreshCw,
+  User,
+  Eye
 } from 'lucide-react';
 import {
   AreaChart,
@@ -36,7 +39,12 @@ import {
 } from 'recharts';
 import { format, parseISO, subDays } from 'date-fns';
 
-export function Dashboard() {
+interface DashboardProps {
+  readOnly?: boolean;
+  patientName?: string;
+}
+
+export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
   const { entries, loading, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours, getLeakageWeight24Hours } = useDiary();
   
   // Date range state - default to last 24 hours
@@ -200,11 +208,22 @@ export function Dashboard() {
 
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* Doctor viewing patient banner */}
+      {readOnly && patientName && (
+        <Alert className="bg-info-soft border-info/30">
+          <Eye className="h-4 w-4 text-info" />
+          <AlertDescription className="flex items-center gap-2 text-info-foreground">
+            <User className="h-4 w-4" />
+            <span>Viewing Dashboard for Patient: <strong>{patientName}</strong></span>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Header with title */}
       <div className="flex items-start justify-between">
         <div className="space-y-1">
           <h1 className="text-2xl font-semibold text-foreground">
-            Here's how your bladder rhythm looks
+            {readOnly ? 'Patient Bladder Rhythm' : "Here's how your bladder rhythm looks"}
           </h1>
           <p className="text-muted-foreground">
             Last updated {format(new Date(), 'MMM d, h:mm a')}
@@ -491,33 +510,35 @@ export function Dashboard() {
         </>
       )}
 
-      {/* CTA section */}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Button 
-          variant="hero" 
-          size="lg" 
-          onClick={() => setCurrentView('entry')}
-        >
-          <PlusCircle className="h-5 w-5" />
-          Log Entry
-        </Button>
-        <Button 
-          variant="soft" 
-          size="lg" 
-          onClick={() => setCurrentView('insights')}
-        >
-          <Brain className="h-5 w-5" />
-          View Insights
-        </Button>
-        <Button 
-          variant="outline" 
-          size="lg" 
-          onClick={() => setCurrentView('overview')}
-        >
-          All Entries
-          <ArrowRight className="h-5 w-5" />
-        </Button>
-      </div>
+      {/* CTA section - only show for patients, not doctors */}
+      {!readOnly && (
+        <div className="grid sm:grid-cols-3 gap-4">
+          <Button 
+            variant="hero" 
+            size="lg" 
+            onClick={() => setCurrentView('entry')}
+          >
+            <PlusCircle className="h-5 w-5" />
+            Log Entry
+          </Button>
+          <Button 
+            variant="soft" 
+            size="lg" 
+            onClick={() => setCurrentView('insights')}
+          >
+            <Brain className="h-5 w-5" />
+            View Insights
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg" 
+            onClick={() => setCurrentView('overview')}
+          >
+            All Entries
+            <ArrowRight className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,30 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useDiary } from '@/context/DiaryContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { 
   Brain, 
   HeartPulse, 
   AlertTriangle, 
-  Info, 
   CheckCircle, 
   Clock,
   Stethoscope,
-  FileText,
   Save,
   Loader2,
-  Edit,
-  Plus
+  Plus,
+  Calendar,
+  Activity,
+  Droplets,
+  Moon,
+  Sun,
+  FileText,
+  ExternalLink
 } from 'lucide-react';
 import { ClinicalPattern } from '@/types/urotracker';
 import { TreatmentPlan } from '@/types/roles';
 import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+import { sv } from 'date-fns/locale';
+import { getValidationSummary } from '@/utils/recordingValidation';
 
 export function DoctorInsightsView() {
   const { user, selectedPatient } = useAuth();
@@ -37,6 +47,11 @@ export function DoctorInsightsView() {
   const [planText, setPlanText] = useState('');
   const [clinicianNotes, setClinicianNotes] = useState('');
   const [saving, setSaving] = useState(false);
+
+  // Calculate validation summary
+  const validationSummary = useMemo(() => {
+    return getValidationSummary(entries);
+  }, [entries]);
 
   useEffect(() => {
     if (selectedPatient) {
@@ -58,7 +73,7 @@ export function DoctorInsightsView() {
     }
   };
 
-  // Generate clinical patterns (same as patient view)
+  // Generate clinical patterns
   const generatePatterns = (): ClinicalPattern[] => {
     const patterns: ClinicalPattern[] = [];
     
@@ -132,14 +147,12 @@ export function DoctorInsightsView() {
     setSaving(true);
     
     try {
-      // For now, we'll save without a recording_block_id as we may not have one
-      // In a real implementation, you'd select a specific recording block
       const { error } = await supabase
         .from('treatment_plans')
         .insert({
           doctor_id: user.doctorId,
           patient_id: selectedPatient.id,
-          recording_block_id: '00000000-0000-0000-0000-000000000000', // Placeholder
+          recording_block_id: '00000000-0000-0000-0000-000000000000',
           plan_text: planText,
           clinician_notes: clinicianNotes || null,
         });
@@ -178,8 +191,24 @@ export function DoctorInsightsView() {
     low: CheckCircle,
   };
 
+  // Calculate summary stats from entries
+  const summaryStats = useMemo(() => {
+    const voids = entries.filter(e => e.event_type === 'void');
+    const leakages = entries.filter(e => e.event_type === 'leakage');
+    const intakes = entries.filter(e => e.event_type === 'intake');
+    const uniqueDays = new Set(entries.map(e => e.date)).size;
+    
+    return {
+      voidCount: voids.length,
+      leakageCount: leakages.length,
+      intakeCount: intakes.length,
+      totalDays: uniqueDays,
+    };
+  }, [entries]);
+
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* Header */}
       <div className="space-y-1">
         <h2 className="text-xl font-semibold flex items-center gap-2">
           <Brain className="h-5 w-5 text-primary" />
@@ -190,36 +219,188 @@ export function DoctorInsightsView() {
         </p>
       </div>
 
-      {/* Clinical patterns */}
+      {/* Data Validation Status */}
+      <Card variant="elevated" className={cn(
+        "border-2",
+        validationSummary.meets48hRequirement ? "border-success/30" : "border-warning/30"
+      )}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              Datakvalitet
+            </span>
+            <Badge 
+              variant="outline" 
+              className={cn(
+                validationSummary.meets48hRequirement 
+                  ? "bg-success-soft text-success border-success/30" 
+                  : "bg-warning-soft text-warning-foreground border-warning/30"
+              )}
+            >
+              {validationSummary.meets48hRequirement ? (
+                <><CheckCircle className="h-3 w-3 mr-1" /> Tillräcklig data</>
+              ) : (
+                <><AlertTriangle className="h-3 w-3 mr-1" /> Otillräcklig data</>
+              )}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <Clock className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-2xl font-bold">{validationSummary.loggedHours}h</p>
+              <p className="text-xs text-muted-foreground">Loggade timmar</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <Calendar className="h-5 w-5 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-2xl font-bold">{validationSummary.uniqueCalendarDays}</p>
+              <p className="text-xs text-muted-foreground">Unika dagar</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <Droplets className="h-5 w-5 mx-auto mb-1 text-primary" />
+              <p className="text-2xl font-bold">{summaryStats.voidCount}</p>
+              <p className="text-xs text-muted-foreground">Miktioner</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <AlertTriangle className="h-5 w-5 mx-auto mb-1 text-warning-foreground" />
+              <p className="text-2xl font-bold">{summaryStats.leakageCount}</p>
+              <p className="text-xs text-muted-foreground">Läckage</p>
+            </div>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>Progress mot 48h</span>
+              <span className="font-medium">{Math.round(validationSummary.completionPercentage)}%</span>
+            </div>
+            <Progress value={validationSummary.completionPercentage} className="h-2" />
+          </div>
+          
+          {!validationSummary.meets48hRequirement && (
+            <Alert variant="destructive" className="bg-warning-soft border-warning/30">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Diagnostisk utvärdering kräver minst 48 timmar</AlertTitle>
+              <AlertDescription>
+                Patienten har endast {validationSummary.loggedHours} timmars data. 
+                Fortsatt loggning rekommenderas innan fullständig klinisk bedömning.
+              </AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recording Block Summary */}
+      <Card variant="elevated">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5 text-primary" />
+            Sammanfattning
+          </CardTitle>
+          <CardDescription>
+            Övergripande statistik för patientens dagbok
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-lg bg-warning-soft/30 border border-warning/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Sun className="h-5 w-5 text-warning-foreground" />
+                <span className="font-medium">Dagtid (06-22)</span>
+              </div>
+              <p className="text-2xl font-bold">{stats.dayVoids}</p>
+              <p className="text-sm text-muted-foreground">miktioner</p>
+            </div>
+            
+            <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Moon className="h-5 w-5 text-primary" />
+                <span className="font-medium">Nattetid (22-06)</span>
+              </div>
+              <p className="text-2xl font-bold">{stats.nightVoids}</p>
+              <p className="text-sm text-muted-foreground">miktioner</p>
+            </div>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">Min volym</p>
+              <p className="text-lg font-semibold">{stats.minVolume || 0} ml</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-primary/10">
+              <p className="text-xs text-muted-foreground mb-1">Median</p>
+              <p className="text-lg font-semibold">{stats.medianVolume || 0} ml</p>
+            </div>
+            <div className="text-center p-3 rounded-lg bg-muted/50">
+              <p className="text-xs text-muted-foreground mb-1">Max volym</p>
+              <p className="text-lg font-semibold">{stats.maxVolume || 0} ml</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Clinical Patterns - Only show if sufficient data */}
       <div className="space-y-4">
-        {patterns.map((pattern, index) => {
-          const ProbabilityIcon = probabilityIcons[pattern.probability];
-          return (
-            <Card key={index} variant="elevated">
-              <CardHeader className="pb-3">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-center gap-2">
-                    <HeartPulse className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">{pattern.name}</span>
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <HeartPulse className="h-5 w-5 text-primary" />
+          Diagnostisk Sannolikhetsrankning
+        </h3>
+        
+        {!validationSummary.meets48hRequirement ? (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Otillräcklig data för diagnostik</AlertTitle>
+            <AlertDescription>
+              Diagnostisk bedömning kräver minst 48 timmars loggad data. 
+              Nuvarande data: {validationSummary.loggedHours} timmar.
+            </AlertDescription>
+          </Alert>
+        ) : (
+          patterns.map((pattern, index) => {
+            const ProbabilityIcon = probabilityIcons[pattern.probability];
+            return (
+              <Card key={index} variant="elevated">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                      <HeartPulse className="h-5 w-5 text-primary" />
+                      <span className="font-semibold">{pattern.name}</span>
+                    </div>
+                    <Badge variant="outline" className={cn("flex items-center gap-1", probabilityColors[pattern.probability])}>
+                      <ProbabilityIcon className="h-3 w-3" />
+                      {pattern.probability === 'high' ? 'Hög' : pattern.probability === 'moderate' ? 'Måttlig' : 'Låg'}
+                    </Badge>
                   </div>
-                  <Badge variant="outline" className={cn("flex items-center gap-1", probabilityColors[pattern.probability])}>
-                    <ProbabilityIcon className="h-3 w-3" />
-                    {pattern.probability === 'high' ? 'Hög' : pattern.probability === 'moderate' ? 'Måttlig' : 'Låg'}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-sm text-muted-foreground">{pattern.reasoning}</p>
-                <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
-                  <p className="text-sm">
-                    <strong>Rekommendation:</strong> {pattern.recommendation}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <p className="text-sm text-muted-foreground">{pattern.reasoning}</p>
+                  <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+                    <p className="text-sm">
+                      <strong>Rekommendation:</strong> {pattern.recommendation}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
       </div>
+
+      {/* Guideline Reference */}
+      <Card variant="elevated" className="bg-info-soft/30 border-info/20">
+        <CardContent className="p-4 flex items-center gap-3">
+          <ExternalLink className="h-5 w-5 text-info" />
+          <div>
+            <p className="text-sm font-medium">Riktlinjereferens</p>
+            <p className="text-xs text-muted-foreground">
+              Baserat på EAU Guidelines on Urinary Incontinence (2023)
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Treatment Plan Section - Doctor Only */}
       <Card variant="elevated" className="border-2 border-primary/20">
@@ -239,7 +420,7 @@ export function DoctorInsightsView() {
                     <div key={plan.id} className="p-4 rounded-lg bg-muted/50 space-y-2">
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">
-                          {new Date(plan.created_at).toLocaleDateString('sv-SE')}
+                          {format(new Date(plan.created_at), 'd MMMM yyyy', { locale: sv })}
                         </span>
                       </div>
                       <p className="text-sm">{plan.plan_text}</p>
