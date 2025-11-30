@@ -1,4 +1,5 @@
 import { useDiary } from '@/context/DiaryContext';
+import { useAuth } from '@/context/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,15 +11,19 @@ import {
   ArrowRight,
   Stethoscope,
   CheckCircle,
-  Clock
+  Clock,
+  Lock
 } from 'lucide-react';
 import { ClinicalPattern } from '@/types/urotracker';
 import { cn } from '@/lib/utils';
 
 export function ClinicalInsights() {
   const { entries, getStats, userProfile, setCurrentView, getEntriesLast48Hours } = useDiary();
+  const { user } = useAuth();
   const stats = getStats();
   const recentEntries = getEntriesLast48Hours();
+
+  const isPatient = user?.role === 'patient';
 
   // Generate clinical patterns based on diary data and EAU guidelines
   const generatePatterns = (): ClinicalPattern[] => {
@@ -201,6 +206,24 @@ export function ClinicalInsights() {
           );
         })}
       </div>
+
+      {/* Treatment Plan Notice for Patients */}
+      {isPatient && (
+        <Card className="bg-muted/50 border-muted-foreground/20">
+          <CardContent className="flex items-center gap-4 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted">
+              <Lock className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="font-medium text-foreground">Behandlingsplan</p>
+              <p className="text-sm text-muted-foreground">
+                Behandlingsplaner kan endast läggas till av din vårdgivare. 
+                Dela dina insikter med din läkare för individuell rådgivning.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {(!userProfile.sex || !userProfile.age) && (
         <Card variant="insight">

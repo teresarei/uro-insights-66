@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { ViewType } from '@/types/urotracker';
 import { cn } from '@/lib/utils';
 import { ExportDialog } from './ExportDialog';
+import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,6 +46,9 @@ export function Header() {
               <Droplets className="h-5 w-5 text-primary-foreground" />
             </div>
             <span className="text-xl font-semibold text-foreground">Void.AI</span>
+            <Badge variant="outline" className="hidden sm:flex text-xs">
+              Patient
+            </Badge>
           </button>
 
           <nav className="hidden lg:flex items-center gap-1">
