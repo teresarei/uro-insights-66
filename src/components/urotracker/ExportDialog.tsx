@@ -28,8 +28,8 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
   const { entries, getStats, getEntriesLast48Hours } = useDiary();
   const { blocks, generateBlocksFromEntries } = useRecordingBlocks();
   const [isExporting, setIsExporting] = useState(false);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState('2025-11-26');
+  const [endDate, setEndDate] = useState('2025-11-28');
 
   // Generate blocks when dialog opens
   useEffect(() => {

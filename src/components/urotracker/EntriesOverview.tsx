@@ -63,8 +63,8 @@ export function EntriesOverview() {
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState('2025-11-26');
+  const [endDate, setEndDate] = useState('2025-11-28');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   // Edit dialog

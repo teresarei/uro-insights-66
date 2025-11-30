@@ -47,14 +47,15 @@ interface DashboardProps {
 export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
   const { entries, loading, getStats, setCurrentView, getEntriesLast48Hours, getVoidsPer24Hours, getLeakageWeight24Hours } = useDiary();
   
-  // Date range state - default to last 24 hours
+  // Date range state - default to Nov 26-28, 2025
+  const defaultStartDate = '2025-11-26';
+  const defaultEndDate = '2025-11-28';
   const today = format(new Date(), 'yyyy-MM-dd');
-  const yesterday = format(subDays(new Date(), 1), 'yyyy-MM-dd');
   
-  const [startDate, setStartDate] = useState(yesterday);
-  const [endDate, setEndDate] = useState(today);
-  const [appliedStartDate, setAppliedStartDate] = useState(yesterday);
-  const [appliedEndDate, setAppliedEndDate] = useState(today);
+  const [startDate, setStartDate] = useState(defaultStartDate);
+  const [endDate, setEndDate] = useState(defaultEndDate);
+  const [appliedStartDate, setAppliedStartDate] = useState(defaultStartDate);
+  const [appliedEndDate, setAppliedEndDate] = useState(defaultEndDate);
   const [dateError, setDateError] = useState<string | null>(null);
   
   // Filter entries based on selected date range
@@ -132,12 +133,12 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
     setAppliedEndDate(endDate);
   };
   
-  // Reset to last 24 hours
+  // Reset to default date range
   const handleReset = () => {
-    setStartDate(yesterday);
-    setEndDate(today);
-    setAppliedStartDate(yesterday);
-    setAppliedEndDate(today);
+    setStartDate(defaultStartDate);
+    setEndDate(defaultEndDate);
+    setAppliedStartDate(defaultStartDate);
+    setAppliedEndDate(defaultEndDate);
     setDateError(null);
   };
 
@@ -273,7 +274,7 @@ export function Dashboard({ readOnly = false, patientName }: DashboardProps) {
                 <span className="hidden xs:inline">Apply</span>
                 <span className="xs:hidden">Apply</span>
               </Button>
-              <Button variant="outline" size="icon" onClick={handleReset} title="Reset to last 24 hours" className="shrink-0">
+              <Button variant="outline" size="icon" onClick={handleReset} title="Reset to default range" className="shrink-0">
                 <RefreshCw className="h-4 w-4" />
               </Button>
             </div>
